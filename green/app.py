@@ -776,8 +776,13 @@ async function runIfc(){
   say('agent','IFC ingest: '+d.ifc.note);replay(d.run);
 }
 async function loadDemo(){
-  document.getElementById('vstatus').textContent='Loading demo IFC…';
-  const buf=await (await fetch('/demo.ifc')).arrayBuffer();loadIfcBuffer(buf,'Northbank-Architecture.ifc');
+  const st=document.getElementById('vstatus');st.textContent='Loading demo IFC…';
+  try{
+    const resp=await fetch('/demo.ifc');if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const buf=await resp.arrayBuffer();
+    if(typeof loadIfcBuffer!=='function')throw new Error('3D module still loading — wait a few seconds and retry');
+    await loadIfcBuffer(buf,'Northbank-Architecture.ifc');
+  }catch(e){st.textContent='Demo IFC failed to load: '+e.message;}
 }
 </script>
 <script type="importmap">
@@ -786,42 +791,69 @@ async function loadDemo(){
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {IFCLoader} from 'three/addons/loaders/IFCLoader.js';
+import {IfcAPI, IFCWINDOW, IFCWALL, IFCWALLSTANDARDCASE} from 'web-ifc';
 const box=document.getElementById('viewer'),status=document.getElementById('vstatus');
+const setStatus=t=>{status.textContent=t;};
+window.addEventListener('error',e=>{if(!window.__gfModel) setStatus('3D viewer error: '+(e.message||'script failed to load')+'. The analysis still runs server-side.');});
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1a10);
-const camera=new THREE.PerspectiveCamera(45,box.clientWidth/box.clientHeight,0.1,2000);camera.position.set(28,22,28);
+const camera=new THREE.PerspectiveCamera(45,box.clientWidth/box.clientHeight,0.1,5000);camera.position.set(28,22,28);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(box.clientWidth,box.clientHeight);box.appendChild(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);
-scene.add(new THREE.AmbientLight(0xffffff,0.75));
+scene.add(new THREE.AmbientLight(0xffffff,0.8));
 const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(30,50,20);scene.add(sun);
-scene.add(new THREE.GridHelper(120,24,0x2f5d3a,0x1d3a24));
-const loader=new IFCLoader();loader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.57/');
-let model=null;const TYPES={window:null,wall:null};
-(async()=>{const m=await import('web-ifc');TYPES.window=m.IFCWINDOW;TYPES.wall=m.IFCWALL;})();
+scene.add(new THREE.GridHelper(200,40,0x2f5d3a,0x1d3a24));
 function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
 animate();
+const ifcAPI=new IfcAPI();
+ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.57/');
+let apiReady=null;
+function initApi(){if(!apiReady){apiReady=ifcAPI.Init().then(()=>true).catch(e=>{setStatus('3D viewer: web-ifc failed to initialise ('+e.message+').');throw e;});}return apiReady;}
+let modelGroup=null;const byType={window:[],wall:[]};
 window.loadIfcBuffer=async function(buf,name){
   try{
-    if(model){scene.remove(model);model=null;}
-    status.textContent='Parsing '+name+' in your browser…';
-    model=await loader.parse(buf);scene.add(model);
-    const bb=new THREE.Box3().setFromObject(model);const c=bb.getCenter(new THREE.Vector3());
-    controls.target.copy(c);camera.position.set(c.x+30,c.y+24,c.z+30);
-    status.textContent=name+' loaded — drag to orbit, scroll to zoom. Use the highlight buttons to colour glazing / walls.';
-  }catch(e){status.textContent='3D viewer could not parse this IFC in the browser ('+e.message+'). The server-side analysis still runs.';}
+    setStatus('Initialising web-ifc…');await initApi();
+    setStatus('Parsing '+name+' in your browser…');
+    if(modelGroup){scene.remove(modelGroup);modelGroup=null;byType.window=[];byType.wall=[];}
+    const modelID=ifcAPI.OpenModel(new Uint8Array(buf));
+    modelGroup=new THREE.Group();let meshCount=0;
+    const types={};
+    ifcAPI.StreamAllMeshes(modelID,(flatMesh)=>{
+      const typeCode=ifcAPI.GetLineType(modelID,flatMesh.expressID);
+      for(const placed of flatMesh.geometries){
+        const geom=ifcAPI.GetGeometry(modelID,placed.geometryExpressID);
+        const verts=ifcAPI.GetVertexArray(geom.GetVertexData(),geom.GetVertexDataSize());
+        const indices=ifcAPI.GetIndexArray(geom.GetIndexData(),geom.GetIndexDataSize());
+        const n=verts.length/6;const pos=new Float32Array(n*3);const nor=new Float32Array(n*3);
+        for(let i=0;i<n;i++){pos.set(verts.subarray(i*6,i*6+3),i*3);nor.set(verts.subarray(i*6+3,i*6+6),i*3);}
+        const g=new THREE.BufferGeometry();
+        g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+        g.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+        g.setIndex(new THREE.BufferAttribute(indices,1));
+        const c=placed.color;
+        const mat=new THREE.MeshLambertMaterial({color:new THREE.Color(c.x,c.y,c.z),transparent:c.w<1,opacity:c.w});
+        const mesh=new THREE.Mesh(g,mat);
+        mesh.matrixAutoUpdate=false;mesh.matrix.fromArray(placed.flatTransformation);
+        mesh.userData.baseColor=mat.color.getHex();mesh.userData.typeCode=typeCode;
+        modelGroup.add(mesh);meshCount++;
+        if(typeCode===IFCWINDOW)byType.window.push(mesh);
+        if(typeCode===IFCWALL||typeCode===IFCWALLSTANDARDCASE)byType.wall.push(mesh);
+        geom.delete();
+      }
+    });
+    scene.add(modelGroup);window.__gfModel=true;
+    const bb=new THREE.Box3().setFromObject(modelGroup);const ctr=bb.getCenter(new THREE.Vector3());const size=bb.getSize(new THREE.Vector3()).length();
+    controls.target.copy(ctr);camera.position.set(ctr.x+size*0.6,ctr.y+size*0.45,ctr.z+size*0.6);
+    setStatus(name+' loaded: '+meshCount+' meshes ('+byType.window.length+' glazing, '+byType.wall.length+' wall pieces). Drag to orbit, scroll to zoom.');
+  }catch(e){setStatus('3D viewer could not parse this IFC ('+e.message+'). The server-side analysis still runs.');}
 };
-window.highlight=async function(kind){
-  if(!model){status.textContent='Load an IFC first.';return;}
-  const mgr=loader.ifcManager;const mid=model.modelID;
-  mgr.removeSubset(mid);model.traverse(o=>{if(o.material&&o.material.transparent!==undefined){o.material.opacity=1;o.material.transparent=false;}});
-  if(!kind)return;
-  try{
-    const ids=await mgr.getAllItemsOfType(mid,TYPES[kind],false);
-    if(!ids.length){status.textContent='No elements of that type in this model.';return;}
-    const mat=new THREE.MeshLambertMaterial({color:kind==='window'?0x38bdf8:0xf59e0b,transparent:true,opacity:0.95});
-    mgr.createSubset({modelID:mid,ids,material:mat,scene,removePrevious:true});
-    status.textContent='Highlighted '+ids.length+' '+(kind==='window'?'glazing':'wall')+' elements — the systems the verifier checks first.';
-  }catch(e){status.textContent='Highlight failed: '+e.message;}
+window.highlight=function(kind){
+  if(!modelGroup){setStatus('Load an IFC first.');return;}
+  modelGroup.traverse(o=>{if(o.isMesh){o.material.color.setHex(o.userData.baseColor);o.material.opacity=1;o.material.transparent=false;}});
+  if(!kind){setStatus('Colours reset.');return;}
+  const list=byType[kind]||[];
+  if(!list.length){setStatus('No '+(kind==='window'?'glazing':'wall')+' elements in this model.');return;}
+  list.forEach(m=>{m.material.color.setHex(kind==='window'?0x38bdf8:0xf59e0b);});
+  setStatus('Highlighted '+list.length+' '+(kind==='window'?'glazing':'wall')+' elements — the systems the verifier checks first.');
 };
 </script>
 </body></html>
