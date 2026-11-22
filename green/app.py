@@ -739,7 +739,7 @@ async function replay(r){
       if(el&&v){const b=el.querySelector('.badge');b.className='badge '+(v.verified?'ok':'no');b.textContent=v.verified?'VERIFIED':'REJECTED';}
       if(window.gfCue&&v){const cand=r.candidates.find(c=>c.id===id);gfCue({mode:'focus',set:FIXSET[id]||'glazing',color:v.verified?0x22c55e:0xef4444,label:'verifying '+(cand?cand.title:id)+' — '+(v.verified?'VERIFIED, glowing green.':'REJECTED, glowing red.')});}}
     else if(w.startsWith('APPLY')){setStage(3);say('apply',w);if(window.gfCue)gfCue({mode:'apply'});}
-    await sleep(w.startsWith('CHECK')?1700:700);
+    await sleep(w.startsWith('CHECK')?2600:800);
   }
   setStage(3,'done');renderResults(r);
 }
@@ -866,14 +866,14 @@ function flyTo(pos,tgt,dur){
   camAnim={p0:camera.position.clone(),p1:pos,t0:controls.target.clone(),t1:tgt,start:performance.now(),dur:dur||1400};
 }
 const _bb=new THREE.Box3(),_v=new THREE.Vector3();
-function frameMeshes(meshes,distFactor){
+function frameMeshes(meshes,distFactor,fixedDir){
   if(!meshes.length)return;
   _bb.makeEmpty();meshes.forEach(m=>_bb.expandByObject(m));
   const ctr=_bb.getCenter(new THREE.Vector3());const size=Math.max(_bb.getSize(new THREE.Vector3()).length(),4);
-  const dir=camera.position.clone().sub(controls.target).normalize();
-  if(dir.lengthSq()<0.1)dir.set(1,0.6,1).normalize();
+  let dir=camera.position.clone().sub(controls.target).normalize();
+  if(fixedDir||dir.lengthSq()<0.1||Math.abs(dir.y)>0.75)dir=new THREE.Vector3(1,0.55,1).normalize();
   const dist=size*(distFactor||0.9);
-  flyTo(ctr.clone().add(dir.multiplyScalar(dist)).add(new THREE.Vector3(0,size*0.18,0)),ctr,1500);
+  flyTo(ctr.clone().add(dir.multiplyScalar(dist)).add(new THREE.Vector3(0,size*0.18,0)),ctr,1300);
 }
 function resetVisuals(){
   pulseSet=[];
@@ -889,11 +889,11 @@ function paintSet(list,color,dimRest){
 const SETS=()=>({glazing:byType.window,walls:byType.wall,roof:byType.roof,floors:byType.slab,structure:byType.wall.concat(byType.slab),members:byType.member});
 window.gfCue=function(cue){
   if(!modelGroup||!cue)return;
-  if(cue.mode==='overview'){resetVisuals();frameMeshes([modelGroup],1.1);setStatus('Agent camera: full model overview while the agent assesses the building.');return;}
+  if(cue.mode==='overview'){resetVisuals();frameMeshes([modelGroup],1.1,true);setStatus('Agent camera: full model overview while the agent assesses the building.');return;}
   if(cue.mode==='apply'){
     resetVisuals();
     const all=byType.window.concat(byType.wall,byType.roof);
-    paintSet(all,0x22c55e,false);frameMeshes([modelGroup],1.15);
+    paintSet(all,0x22c55e,false);frameMeshes([modelGroup],1.15,true);
     setStatus('Agent camera: the verified bundle applied — glazing, walls and roof glow green.');
     return;
   }
