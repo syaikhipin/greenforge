@@ -320,15 +320,31 @@ def apply_bundle(b: Building, edits: list) -> Building:
 
 
 # --------------------------------------------------------------------------- #
-# Optional LLM ranking via OpenAI (ranks only, never invents numbers)
+# Optional LLM ranking via an OpenAI-compatible endpoint (ranks only, never
+# invents numbers). Provider order: Opencode Go if OPENCODE_API_KEY is set
+# (Go endpoint, needs the x-opencode-session header + a browser user agent),
+# otherwise OpenAI if OPENAI_API_KEY is set.
 # --------------------------------------------------------------------------- #
 def llm_rank(candidates: list, code: dict, failures: list) -> tuple:
     """Return (ordered_candidates, llm_used). Any error -> (candidates, False)."""
-    key = os.environ.get("OPENAI_API_KEY")
-    if not key or not candidates:
+    oc_key = os.environ.get("OPENCODE_API_KEY")
+    oa_key = os.environ.get("OPENAI_API_KEY")
+    if not candidates or not (oc_key or oa_key):
         return candidates, False
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    if oc_key:
+        key = oc_key
+        model = os.environ.get("OPENCODE_GO_MODEL", "mimo-v2.6-flash")
+        base_url = "https://opencode.ai/zen/go/v1"
+        extra_headers = {
+            "x-opencode-session": "greenforge-1",
+            "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                           "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"),
+        }
+    else:
+        key = oa_key
+        model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+        extra_headers = {}
     ids = [c["id"] for c in candidates]
     prompt = (
         "You rank building retrofit fixes. Failing rules for code "
@@ -343,6 +359,7 @@ def llm_rank(candidates: list, code: dict, failures: list) -> tuple:
             headers={
                 "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json",
+                **extra_headers,
             },
             json={"model": model,
                   "messages": [{"role": "user", "content": prompt}]},
@@ -391,7 +408,7 @@ def run_loop(b: Building, code_id: str, use_llm: bool = False) -> dict:
         candidates, llm_used = llm_rank(candidates, code, failures)
     workings.append(
         f"RESOLVE: {len(candidates)} candidate fixes proposed "
-        f"({'LLM-ranked via OpenAI' if llm_used else 'deterministic catalogue order'}).")
+        f"({'LLM-ranked (provider configured)' if llm_used else 'deterministic catalogue order'}).")
 
     # CHECK — each candidate individually against the original building
     base_pass = {c["key"]: c["pass"] for c in checks_before}
@@ -662,7 +679,7 @@ fixes a failing rule (or cuts embodied carbon &ge;1%), regresses nothing, and do
 <label>HVAC kW/RT <input id="hvac_kw_per_rt" type="number" step="0.01"></label>
 <label>Lighting W/m2 <input id="lighting_wpd" type="number" step="0.5"></label>
 <label>Renewable share <input id="renewable_share" type="number" step="0.01"></label>
-<label><input id="use_llm" type="checkbox" style="width:auto"> Use LLM ranking (OpenAI, ranks only — numbers come from the verifier)</label>
+<label><input id="use_llm" type="checkbox" style="width:auto"> Use LLM ranking (Opencode Go / OpenAI, ranks only — numbers come from the verifier)</label>
 <button onclick="run()">&#9654; Run verified-fix loop</button>
 </fieldset>
 <fieldset><legend>Model (IFC)</legend>
@@ -825,7 +842,7 @@ def demo_ifc():
 @app.get("/api/health")
 def health():
     return {"ok": True, "engine": energyplus_note(),
-            "llm_configured": bool(os.environ.get("OPENAI_API_KEY")),
+            "llm_configured": bool(os.environ.get("OPENCODE_API_KEY") or os.environ.get("OPENAI_API_KEY")),
             "codes": list(CODES.keys())}
 
 
