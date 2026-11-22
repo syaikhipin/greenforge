@@ -723,21 +723,23 @@ function building(){const b={};for(const k in DEMO)b[k]=parseFloat(document.getE
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function setStage(i,cls){for(let j=0;j<4;j++){const e=document.getElementById('st'+j);e.className='stage'+(j<i||cls==='done'&&j<=i?' done':j===i?' active':'');}}
 function say(lane,text){const f=document.getElementById('feed');const d=document.createElement('div');d.className='msg';d.innerHTML='<div class="lane '+lane+'">'+lane.toUpperCase()+'</div><p></p>';d.querySelector('p').textContent=text;f.appendChild(d);f.scrollTop=f.scrollHeight;}
+const FIXSET={reduce_wwr:'glazing',lowe_glazing:'glazing',shading_fins:'glazing',wall_insulation:'walls',roof_insulation:'roof',hvac_upgrade:'roof',led_lighting:'floors',rooftop_pv:'roof',low_carbon_concrete:'structure',recycled_steel:'members'};
 async function replay(r){
   document.getElementById('feed').innerHTML='';document.getElementById('out').innerHTML='';
   const cards=document.createElement('div');cards.className='cards';cards.id='cards';
   say('you','Run the verified-fix loop against '+r.code.name+'.');await sleep(350);
   for(const w of r.workings){
-    if(w.startsWith('OBSERVE')){setStage(0);say('agent',w);}
+    if(w.startsWith('OBSERVE')){setStage(0);say('agent',w);if(window.gfCue)gfCue({mode:'overview'});}
     else if(w.startsWith('RESOLVE')){setStage(1);say('agent',w);document.getElementById('out').appendChild(cards);
       r.candidates.forEach(c=>{const el=document.createElement('div');el.className='card';el.id='card-'+c.id;
         el.innerHTML='<h4></h4><p></p><span class="badge wait">AWAITING VERIFICATION</span>';
         el.querySelector('h4').textContent=c.title;el.querySelector('p').textContent=c.description+' Capex: '+c.capex.toLocaleString()+' '+r.code.currency+'.';cards.appendChild(el);});}
     else if(w.startsWith('CHECK')){setStage(2);say('verifier',w);
       const id=w.split(' ')[1].replace(':','');const v=r.verdicts.find(x=>x.id===id);const el=document.getElementById('card-'+id);
-      if(el&&v){const b=el.querySelector('.badge');b.className='badge '+(v.verified?'ok':'no');b.textContent=v.verified?'VERIFIED':'REJECTED';}}
-    else if(w.startsWith('APPLY')){setStage(3);say('apply',w);}
-    await sleep(650);
+      if(el&&v){const b=el.querySelector('.badge');b.className='badge '+(v.verified?'ok':'no');b.textContent=v.verified?'VERIFIED':'REJECTED';}
+      if(window.gfCue&&v){const cand=r.candidates.find(c=>c.id===id);gfCue({mode:'focus',set:FIXSET[id]||'glazing',color:v.verified?0x22c55e:0xef4444,label:'verifying '+(cand?cand.title:id)+' — '+(v.verified?'VERIFIED, glowing green.':'REJECTED, glowing red.')});}}
+    else if(w.startsWith('APPLY')){setStage(3);say('apply',w);if(window.gfCue)gfCue({mode:'apply'});}
+    await sleep(w.startsWith('CHECK')?1700:700);
   }
   setStage(3,'done');renderResults(r);
 }
@@ -764,6 +766,7 @@ function renderResults(r){
 }
 async function run(){
   setStage(0);say('you','Running… the verifier checks every proposal before you see a fix.');
+  if(!window.__gfModel){say('agent','Loading the building in 3D so you can watch each check on the model…');await loadDemo();}
   const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({building:building(),code_id:document.getElementById('code_id').value,use_llm:document.getElementById('use_llm').checked})});
   replay(await r.json());
