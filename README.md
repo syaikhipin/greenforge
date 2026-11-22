@@ -1,4 +1,4 @@
-> **This copy adds ORCA-Green** — the Green-code verified-fix agent (Green Mark / Estidama / Mostadam / Greenship, energy + embodied-carbon verification). See **[README-GREEN.md](README-GREEN.md)** and [`green/`](green/). The original ORCA README follows, unmodified.
+> **This copy adds GreenForge** — the Green-code verified-fix agent (Green Mark / Estidama / Mostadam / Greenship, energy + embodied-carbon verification, agentic UI + 3D IFC viewer). See **[GREENFORGE.md](GREENFORGE.md)** and [`green/`](green/). The original ORCA README follows, unmodified.
 
 <h1>
   <picture>

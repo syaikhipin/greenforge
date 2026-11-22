@@ -1,7 +1,7 @@
 """
-ORCA-Green: Green-code verified-fix agent.
+GreenForge: Green-code verified-fix agent.
 
-Mirrors ORCA's Observe -> Resolve -> Check -> Apply loop, but the verifier is
+The verified-fix loop — Assess -> Propose -> Verify -> Apply — where the verifier is
 green building codes + a simplified energy simulation + embodied-carbon calc
 instead of geometry.
 
@@ -12,7 +12,7 @@ Honesty rules baked in:
 - IFC counts are never fabricated: if IfcOpenShell is missing or parsing
   fails, parse_ifc returns parsed=False and callers fall back to the demo
   building.
-- An LLM (Opencode Go) may only RANK deterministic candidate fixes. It never
+- An LLM (OpenAI) may only RANK deterministic candidate fixes. It never
   invents numbers, and any LLM error falls back silently to the deterministic
   order with llm_used=False.
 - Code thresholds in codes.json are SIMPLIFIED. A QP / licensed professional
@@ -28,7 +28,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -320,14 +320,15 @@ def apply_bundle(b: Building, edits: list) -> Building:
 
 
 # --------------------------------------------------------------------------- #
-# Optional LLM ranking via Opencode Go (ranks only, never invents numbers)
+# Optional LLM ranking via OpenAI (ranks only, never invents numbers)
 # --------------------------------------------------------------------------- #
 def llm_rank(candidates: list, code: dict, failures: list) -> tuple:
     """Return (ordered_candidates, llm_used). Any error -> (candidates, False)."""
-    key = os.environ.get("OPENCODE_API_KEY")
+    key = os.environ.get("OPENAI_API_KEY")
     if not key or not candidates:
         return candidates, False
-    model = os.environ.get("OPENCODE_GO_MODEL", "mimo-v2.6-flash")
+    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     ids = [c["id"] for c in candidates]
     prompt = (
         "You rank building retrofit fixes. Failing rules for code "
@@ -338,12 +339,9 @@ def llm_rank(candidates: list, code: dict, failures: list) -> tuple:
     )
     try:
         resp = httpx.post(
-            "https://opencode.ai/zen/go/v1/chat/completions",
+            f"{base_url}/chat/completions",
             headers={
                 "Authorization": f"Bearer {key}",
-                "x-opencode-session": "orca-green-1",
-                "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                               "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"),
                 "Content-Type": "application/json",
             },
             json={"model": model,
@@ -393,7 +391,7 @@ def run_loop(b: Building, code_id: str, use_llm: bool = False) -> dict:
         candidates, llm_used = llm_rank(candidates, code, failures)
     workings.append(
         f"RESOLVE: {len(candidates)} candidate fixes proposed "
-        f"({'LLM-ranked via Opencode Go' if llm_used else 'deterministic catalogue order'}).")
+        f"({'LLM-ranked via OpenAI' if llm_used else 'deterministic catalogue order'}).")
 
     # CHECK — each candidate individually against the original building
     base_pass = {c["key"]: c["pass"] for c in checks_before}
@@ -423,7 +421,7 @@ def run_loop(b: Building, code_id: str, use_llm: bool = False) -> dict:
             reasons.append(f"EUI {eui_delta:+} kWh/m2/yr")
         else:
             reasons.append("EUI unchanged")
-        # Two verification tracks, same discipline as ORCA's geometry check:
+        # Two verification tracks, same discipline as a geometry clash check:
         # (1) compliance track — fixes >=1 failing rule; (2) carbon track —
         # cuts embodied carbon by >=1% (material swaps fix carbon, not a rule).
         # Both tracks require: no rule regression and no EUI increase.
@@ -489,7 +487,7 @@ def run_loop(b: Building, code_id: str, use_llm: bool = False) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# IFC ingest (IfcOpenShell — same library ORCA uses)
+# IFC ingest (IfcOpenShell)
 # --------------------------------------------------------------------------- #
 def parse_ifc(path: str) -> dict:
     try:
@@ -563,11 +561,11 @@ def render_report(result: dict) -> str:
         fix_rows = "<tr><td colspan='4'>No verified fixes.</td></tr>"
     costs = result["costs"]
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>ORCA-Green Report — {code['name']}</title>
+<title>GreenForge Report — {code['name']}</title>
 <style>body{{font-family:system-ui,Arial,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#14231a}}
 table{{border-collapse:collapse;width:100%;margin:1rem 0}}td,th{{border:1px solid #cbd5ce;padding:.4rem .6rem;text-align:left}}
 h1{{color:#166534}}.pass{{color:#166534}}</style></head><body>
-<h1>ORCA-Green — Verified-Fix Report</h1>
+<h1>GreenForge — Verified-Fix Report</h1>
 <p><strong>Code:</strong> {code['name']} ({code['country']}) — {code['note']}</p>
 <p><strong>Compliance:</strong> {result['compliance_before']['pass']}/{result['compliance_before']['total']}
 &rarr; {result['compliance_after']['pass']}/{result['compliance_after']['total']} rules passing</p>
@@ -596,22 +594,63 @@ a &ge;1% embodied-carbon cut, no rule regression, no EUI increase.</p>
 # Web UI (single page)
 # --------------------------------------------------------------------------- #
 INDEX_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>ORCA-Green — Green-code verified-fix agent</title>
+<title>GreenForge — Green-code verified-fix agent</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:system-ui,Arial,sans-serif;max-width:980px;margin:2rem auto;padding:0 1rem;color:#14231a;background:#f6faf7}
-h1{color:#166534}fieldset{border:1px solid #b7d3bf;border-radius:8px;margin:1rem 0;background:#fff}
-label{display:block;margin:.35rem 0;font-size:.9rem}input,select{width:180px;padding:.3rem}
-button{background:#166534;color:#fff;border:0;padding:.6rem 1.2rem;border-radius:6px;cursor:pointer;margin:.3rem .3rem .3rem 0}
-table{border-collapse:collapse;width:100%;margin:1rem 0;background:#fff}td,th{border:1px solid #cbd5ce;padding:.35rem .5rem;text-align:left;font-size:.9rem}
-pre{background:#0f2417;color:#d1fae5;padding:1rem;border-radius:8px;overflow:auto;font-size:.8rem}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.5rem}
+:root{--ink:#14231a;--green:#166534;--green2:#22c55e;--amber:#d97706;--red:#dc2626;--line:#cfe0d4;--panel:#fff}
+*{box-sizing:border-box}body{font-family:system-ui,Arial,sans-serif;margin:0;color:var(--ink);background:#f2f7f3}
+header{background:#0f2417;color:#e7f6ec;padding:1rem 1.25rem}header h1{margin:0;font-size:1.6rem;color:#fff}
+header p{margin:.3rem 0 0;color:#b9e4c6;max-width:70ch}
+main{max-width:1180px;margin:0 auto;padding:1rem}
+.pipe{display:flex;gap:.5rem;margin:1rem 0;flex-wrap:wrap}
+.stage{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;opacity:.45}
+.stage.active{opacity:1;border-color:var(--green2);box-shadow:0 0 0 2px #bbf7d0}
+.stage.done{opacity:1;border-color:var(--green)}
+.stage b{display:block;font-size:1rem}.stage span{font-size:.8rem;color:#48604f}
+.cols{display:grid;grid-template-columns:340px 1fr;gap:1rem}@media(max-width:900px){.cols{grid-template-columns:1fr}}
+fieldset{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:0 0 1rem;padding:.8rem 1rem}
+legend{font-weight:700;color:var(--green)}label{display:block;margin:.35rem 0;font-size:.88rem}
+input,select{width:100%;padding:.35rem;border:1px solid var(--line);border-radius:6px}
+button{background:var(--green);color:#fff;border:0;padding:.6rem 1.1rem;border-radius:8px;cursor:pointer;margin:.3rem .3rem .3rem 0;font-weight:600}
+button.ghost{background:#fff;color:var(--green);border:1px solid var(--green)}
+#viewer{height:430px;background:#0b1a10;border-radius:10px;overflow:hidden;position:relative}
+#viewer canvas{display:block}#vstatus{position:absolute;left:.6rem;bottom:.6rem;background:rgba(10,25,15,.85);color:#d1fae5;padding:.3rem .6rem;border-radius:6px;font-size:.8rem}
+.feed{background:#0f2417;border-radius:10px;padding:.8rem;height:430px;overflow:auto;font-size:.86rem}
+.msg{display:flex;gap:.6rem;margin:.45rem 0;animation:in .3s ease}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+.lane{flex:0 0 86px;text-align:center;border-radius:6px;padding:.15rem 0;font-weight:700;font-size:.72rem;height:fit-content}
+.lane.you{background:#334155;color:#e2e8f0}.lane.agent{background:#14532d;color:#bbf7d0}.lane.verifier{background:#713f12;color:#fde68a}.lane.apply{background:#1e3a8a;color:#bfdbfe}
+.msg p{margin:0;color:#e7f6ec}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.6rem;margin:.6rem 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;animation:in .3s ease}
+.card h4{margin:.1rem 0 .3rem;font-size:.95rem}.card p{margin:.2rem 0;font-size:.82rem;color:#48604f}
+.badge{display:inline-block;border-radius:6px;padding:.1rem .5rem;font-size:.72rem;font-weight:700}
+.badge.ok{background:#dcfce7;color:#166534}.badge.no{background:#fee2e2;color:#991b1b}.badge.wait{background:#fef3c7;color:#92400e}
+.bars{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.8rem 1rem;margin:.8rem 0}
+.bar{margin:.55rem 0}.bar label{font-size:.85rem;font-weight:600}
+.track{height:14px;background:#e5efe7;border-radius:7px;position:relative;overflow:hidden}
+.fill{height:100%;border-radius:7px;transition:width 1s ease}
+table{border-collapse:collapse;width:100%;margin:.6rem 0;background:#fff}td,th{border:1px solid var(--line);padding:.35rem .5rem;text-align:left;font-size:.88rem}
+.pass{color:var(--green);font-weight:700}.fail{color:var(--red);font-weight:700}
+.small{font-size:.82rem;color:#48604f}
 </style></head><body>
-<h1>ORCA-Green</h1>
-<p>Same loop as ORCA — <b>Observe &rarr; Resolve &rarr; Check &rarr; Apply</b> — but the verifier is
-green building codes + energy simulation + embodied carbon. Only <b>verified</b> fixes are applied:
-a fix must fix at least one failing rule, regress no passing rule, and not increase EUI.</p>
+<header>
+<h1>GreenForge</h1>
+<p><b>Fixes, not just findings. Every fix proven before you see it.</b><br>
+The verified-fix loop for green building codes: <b>Assess &rarr; Propose &rarr; Verify &rarr; Apply</b>.
+The verifier is energy simulation + green codes + embodied carbon — a fix only reaches you if it
+fixes a failing rule (or cuts embodied carbon &ge;1%), regresses nothing, and does not raise EUI.</p>
+</header>
+<main>
+<div class="pipe">
+  <div class="stage" id="st0"><b>1 · Assess</b><span>Ingest IFC, rules-check the model</span></div>
+  <div class="stage" id="st1"><b>2 · Propose</b><span>Agent proposes edits (glazing, shading, HVAC, materials)</span></div>
+  <div class="stage" id="st2"><b>3 · Verify</b><span>Energy + carbon + rules re-check every edit</span></div>
+  <div class="stage" id="st3"><b>4 · Apply</b><span>Costed, compliant bundle + report</span></div>
+</div>
+<div class="cols">
+<div>
 <fieldset><legend>Building &amp; code</legend>
-<div class="grid">
 <label>Code <select id="code_id"></select></label>
 <label>GFA (m2) <input id="gfa_m2" type="number" step="any"></label>
 <label>WWR <input id="wwr" type="number" step="0.01"></label>
@@ -623,59 +662,144 @@ a fix must fix at least one failing rule, regress no passing rule, and not incre
 <label>HVAC kW/RT <input id="hvac_kw_per_rt" type="number" step="0.01"></label>
 <label>Lighting W/m2 <input id="lighting_wpd" type="number" step="0.5"></label>
 <label>Renewable share <input id="renewable_share" type="number" step="0.01"></label>
-</div>
-<label><input id="use_llm" type="checkbox" style="width:auto"> Use LLM ranking (Opencode Go, ranks only)</label><br>
-<button onclick="run()">Run verified-fix loop</button>
-<label style="display:inline">or upload IFC: <input id="ifc" type="file" accept=".ifc" style="width:auto"></label>
-<button onclick="runIfc()">Run from IFC</button>
+<label><input id="use_llm" type="checkbox" style="width:auto"> Use LLM ranking (OpenAI, ranks only — numbers come from the verifier)</label>
+<button onclick="run()">&#9654; Run verified-fix loop</button>
 </fieldset>
+<fieldset><legend>Model (IFC)</legend>
+<label>Upload IFC <input id="ifc" type="file" accept=".ifc"></label>
+<button class="ghost" onclick="runIfc()">Analyse uploaded IFC</button>
+<button class="ghost" onclick="loadDemo()">Load demo IFC in 3D</button>
+<p class="small">The 3D viewer renders the IFC in your browser (web-ifc + three.js). Highlight buttons colour the envelope systems the verifier reasons about.</p>
+<button class="ghost" onclick="highlight('window')">Highlight glazing</button>
+<button class="ghost" onclick="highlight('wall')">Highlight walls</button>
+<button class="ghost" onclick="highlight(null)">Reset colours</button>
+</fieldset>
+</div>
+<div>
+<div id="viewer"><div id="vstatus">3D viewer idle — load the demo IFC or upload one.</div></div>
+<h3 style="margin:.8rem 0 .3rem">Workings — watch the agent work</h3>
+<div class="feed" id="feed"><div class="msg"><div class="lane you">YOU</div><p>Set the building, then run the loop. Every proposal and every verdict will appear here, live.</p></div></div>
+</div>
+</div>
 <div id="out"></div>
+</main>
 <script>
 const DEMO={gfa_m2:12000,wwr:0.65,glazing_u:2.8,glazing_shgc:0.55,wall_u:1.2,roof_u:0.9,hvac_cop:3.0,hvac_kw_per_rt:1.05,lighting_wpd:15,renewable_share:0.0};
 for(const k in DEMO) document.getElementById(k).value=DEMO[k];
-fetch('/api/codes').then(r=>r.json()).then(d=>{
-  const s=document.getElementById('code_id');
-  d.codes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name+' ('+c.country+')';s.appendChild(o);});
-});
+fetch('/api/codes').then(r=>r.json()).then(d=>{const s=document.getElementById('code_id');d.codes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name+' ('+c.country+')';s.appendChild(o);});});
 function building(){const b={};for(const k in DEMO)b[k]=parseFloat(document.getElementById(k).value);return b;}
-function show(r){
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function setStage(i,cls){for(let j=0;j<4;j++){const e=document.getElementById('st'+j);e.className='stage'+(j<i||cls==='done'&&j<=i?' done':j===i?' active':'');}}
+function say(lane,text){const f=document.getElementById('feed');const d=document.createElement('div');d.className='msg';d.innerHTML='<div class="lane '+lane+'">'+lane.toUpperCase()+'</div><p></p>';d.querySelector('p').textContent=text;f.appendChild(d);f.scrollTop=f.scrollHeight;}
+async function replay(r){
+  document.getElementById('feed').innerHTML='';document.getElementById('out').innerHTML='';
+  const cards=document.createElement('div');cards.className='cards';cards.id='cards';
+  say('you','Run the verified-fix loop against '+r.code.name+'.');await sleep(350);
+  for(const w of r.workings){
+    if(w.startsWith('OBSERVE')){setStage(0);say('agent',w);}
+    else if(w.startsWith('RESOLVE')){setStage(1);say('agent',w);document.getElementById('out').appendChild(cards);
+      r.candidates.forEach(c=>{const el=document.createElement('div');el.className='card';el.id='card-'+c.id;
+        el.innerHTML='<h4></h4><p></p><span class="badge wait">AWAITING VERIFICATION</span>';
+        el.querySelector('h4').textContent=c.title;el.querySelector('p').textContent=c.description+' Capex: '+c.capex.toLocaleString()+' '+r.code.currency+'.';cards.appendChild(el);});}
+    else if(w.startsWith('CHECK')){setStage(2);say('verifier',w);
+      const id=w.split(' ')[1].replace(':','');const v=r.verdicts.find(x=>x.id===id);const el=document.getElementById('card-'+id);
+      if(el&&v){const b=el.querySelector('.badge');b.className='badge '+(v.verified?'ok':'no');b.textContent=v.verified?'VERIFIED':'REJECTED';}}
+    else if(w.startsWith('APPLY')){setStage(3);say('apply',w);}
+    await sleep(650);
+  }
+  setStage(3,'done');renderResults(r);
+}
+function bar(label,before,after,unit,lowerBetter,max){
+  const bw=Math.min(100,before/max*100),aw=Math.min(100,after/max*100);
+  const good=lowerBetter?after<before:after>before;
+  return '<div class="bar"><label>'+label+': '+before.toLocaleString()+' &rarr; '+after.toLocaleString()+' '+unit+'</label>'+
+  '<div class="track"><div class="fill" style="width:'+bw+'%;background:#94a3b8"></div></div>'+
+  '<div class="track" style="margin-top:3px"><div class="fill" style="width:'+aw+'%;background:'+(good?'#22c55e':'#dc2626')+'"></div></div></div>';
+}
+function renderResults(r){
   const rows=r.after.checks.map((c,i)=>{const b=r.observe.checks[i];
-    return `<tr><td>${c.label}</td><td>${b.value}</td><td>${c.value}</td><td>${c.limit} ${c.unit}</td><td>${c.pass?'PASS':'FAIL'}</td></tr>`}).join('');
-  const fixes=r.verdicts.filter(v=>v.verified).map(v=>`<tr><td>${v.title}</td><td>${v.capex.toLocaleString()}</td><td>${v.reason}</td></tr>`).join('')||'<tr><td colspan="3">None</td></tr>';
-  document.getElementById('out').innerHTML=`
-  <h2>Results — ${r.code.name}</h2>
-  <p>Compliance: <b>${r.compliance_before.pass}/${r.compliance_before.total} &rarr; ${r.compliance_after.pass}/${r.compliance_after.total}</b>
-  &nbsp;|&nbsp; EUI: <b>${r.observe.simulation.eui_kwh_m2_yr} &rarr; ${r.after.simulation.eui_kwh_m2_yr}</b> kWh/m2/yr
-  &nbsp;|&nbsp; LLM used: ${r.llm_used}</p>
-  <p>Capex: <b>${r.costs.capex_total.toLocaleString()} ${r.costs.currency}</b> &nbsp;|&nbsp;
-  Annual saving: <b>${r.costs.annual_saving.toLocaleString()} ${r.costs.currency}</b> &nbsp;|&nbsp;
-  Simple payback: <b>${r.costs.simple_payback_years} years</b></p>
-  <p>Embodied carbon: ${r.observe.carbon.total_kgco2e.toLocaleString()} &rarr; ${r.after.carbon.total_kgco2e.toLocaleString()} kgCO2e (delta ${r.carbon_delta_kgco2e.toLocaleString()})</p>
-  <table><tr><th>Rule</th><th>Before</th><th>After</th><th>Limit</th><th>Status</th></tr>${rows}</table>
-  <h3>Verified fixes only</h3>
-  <table><tr><th>Fix</th><th>Capex</th><th>Verification</th></tr>${fixes}</table>
-  <h3>Workings</h3><pre>${r.workings.join('\\n')}</pre>
-  <p><a href="/api/report/${r.run_id}"><button>Download report (HTML)</button></a></p>
-  <p><em>${r.disclaimer}</em></p>`;
+    return '<tr><td>'+c.label+'</td><td>'+b.value+'</td><td>'+c.value+'</td><td>'+c.limit+' '+c.unit+'</td><td class="'+(c.pass?'pass':'fail')+'">'+(c.pass?'PASS':'FAIL')+'</td></tr>';}).join('');
+  document.getElementById('out').insertAdjacentHTML('beforeend',
+  '<div class="bars"><h3 style="margin:.2rem 0">Before / After</h3>'+
+  bar('Compliance (rules passing)',r.compliance_before.pass,r.compliance_after.pass,'of '+r.compliance_after.total,false,r.compliance_after.total)+
+  bar('EUI',r.observe.simulation.eui_kwh_m2_yr,r.after.simulation.eui_kwh_m2_yr,'kWh/m2/yr',true,250)+
+  bar('Embodied carbon',r.observe.carbon.total_kgco2e,r.after.carbon.total_kgco2e,'kgCO2e',true,r.observe.carbon.total_kgco2e)+
+  bar('Annual energy cost',r.costs.annual_cost_before,r.costs.annual_cost_after,r.costs.currency,true,r.costs.annual_cost_before)+
+  '<p><b>Capex '+r.costs.capex_total.toLocaleString()+' '+r.costs.currency+'</b> &nbsp;|&nbsp; Annual saving <b>'+r.costs.annual_saving.toLocaleString()+' '+r.costs.currency+'</b> &nbsp;|&nbsp; Simple payback <b>'+r.costs.simple_payback_years+' years</b> &nbsp;|&nbsp; LLM ranked: '+r.llm_used+'</p>'+
+  '<p><a href="/api/report/'+r.run_id+'"><button>Download submission-ready report (HTML)</button></a></p></div>'+
+  '<h3>Rules — before / after</h3><table><tr><th>Rule</th><th>Before</th><th>After</th><th>Limit</th><th>Status</th></tr>'+rows+'</table>'+
+  '<p class="small">'+r.disclaimer+'</p>');
 }
 async function run(){
+  setStage(0);say('you','Running… the verifier checks every proposal before you see a fix.');
   const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({building:building(),code_id:document.getElementById('code_id').value,use_llm:document.getElementById('use_llm').checked})});
-  show(await r.json());
+  replay(await r.json());
 }
 async function runIfc(){
-  const f=document.getElementById('ifc').files[0]; if(!f){alert('Choose an .ifc file first');return;}
-  const fd=new FormData(); fd.append('file',f); fd.append('code_id',document.getElementById('code_id').value);
-  const r=await fetch('/api/ifc',{method:'POST',body:fd}); const d=await r.json();
-  alert('IFC: '+d.ifc.note); show(d.run);
+  const f=document.getElementById('ifc').files[0];if(!f){alert('Choose an .ifc file first');return;}
+  loadIfcBuffer(await f.arrayBuffer(),f.name);
+  const fd=new FormData();fd.append('file',f);fd.append('code_id',document.getElementById('code_id').value);
+  const r=await fetch('/api/ifc',{method:'POST',body:fd});const d=await r.json();
+  say('agent','IFC ingest: '+d.ifc.note);replay(d.run);
 }
-</script></body></html>"""
+async function loadDemo(){
+  document.getElementById('vstatus').textContent='Loading demo IFC…';
+  const buf=await (await fetch('/demo.ifc')).arrayBuffer();loadIfcBuffer(buf,'Northbank-Architecture.ifc');
+}
+</script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","web-ifc":"https://unpkg.com/web-ifc@0.0.57/web-ifc-api.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {IFCLoader} from 'three/addons/loaders/IFCLoader.js';
+const box=document.getElementById('viewer'),status=document.getElementById('vstatus');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1a10);
+const camera=new THREE.PerspectiveCamera(45,box.clientWidth/box.clientHeight,0.1,2000);camera.position.set(28,22,28);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(box.clientWidth,box.clientHeight);box.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(30,50,20);scene.add(sun);
+scene.add(new THREE.GridHelper(120,24,0x2f5d3a,0x1d3a24));
+const loader=new IFCLoader();loader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.57/');
+let model=null;const TYPES={window:null,wall:null};
+(async()=>{const m=await import('web-ifc');TYPES.window=m.IFCWINDOW;TYPES.wall=m.IFCWALL;})();
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+animate();
+window.loadIfcBuffer=async function(buf,name){
+  try{
+    if(model){scene.remove(model);model=null;}
+    status.textContent='Parsing '+name+' in your browser…';
+    model=await loader.parse(buf);scene.add(model);
+    const bb=new THREE.Box3().setFromObject(model);const c=bb.getCenter(new THREE.Vector3());
+    controls.target.copy(c);camera.position.set(c.x+30,c.y+24,c.z+30);
+    status.textContent=name+' loaded — drag to orbit, scroll to zoom. Use the highlight buttons to colour glazing / walls.';
+  }catch(e){status.textContent='3D viewer could not parse this IFC in the browser ('+e.message+'). The server-side analysis still runs.';}
+};
+window.highlight=async function(kind){
+  if(!model){status.textContent='Load an IFC first.';return;}
+  const mgr=loader.ifcManager;const mid=model.modelID;
+  mgr.removeSubset(mid);model.traverse(o=>{if(o.material&&o.material.transparent!==undefined){o.material.opacity=1;o.material.transparent=false;}});
+  if(!kind)return;
+  try{
+    const ids=await mgr.getAllItemsOfType(mid,TYPES[kind],false);
+    if(!ids.length){status.textContent='No elements of that type in this model.';return;}
+    const mat=new THREE.MeshLambertMaterial({color:kind==='window'?0x38bdf8:0xf59e0b,transparent:true,opacity:0.95});
+    mgr.createSubset({modelID:mid,ids,material:mat,scene,removePrevious:true});
+    status.textContent='Highlighted '+ids.length+' '+(kind==='window'?'glazing':'wall')+' elements — the systems the verifier checks first.';
+  }catch(e){status.textContent='Highlight failed: '+e.message;}
+};
+</script>
+</body></html>
+"""
 
 
 # --------------------------------------------------------------------------- #
 # FastAPI routes
 # --------------------------------------------------------------------------- #
-app = FastAPI(title="ORCA-Green", description="Green-code verified-fix agent (ORCA extension)")
+app = FastAPI(title="GreenForge", description="Green-code verified-fix agent")
 
 
 class RunRequest(BaseModel):
@@ -689,10 +813,19 @@ def index():
     return INDEX_HTML
 
 
+@app.get("/demo.ifc")
+def demo_ifc():
+    """Bundled sample IFC for the 3D viewer (Northbank Architecture, from the upstream sample set)."""
+    f = Path(__file__).parent / "samples" / "Northbank-Architecture.ifc"
+    if not f.exists():
+        return JSONResponse({"error": "demo IFC not bundled"}, status_code=404)
+    return FileResponse(str(f), media_type="application/octet-stream", filename="demo.ifc")
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True, "engine": energyplus_note(),
-            "llm_configured": bool(os.environ.get("OPENCODE_API_KEY")),
+            "llm_configured": bool(os.environ.get("OPENAI_API_KEY")),
             "codes": list(CODES.keys())}
 
 

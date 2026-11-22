@@ -1,4 +1,4 @@
-"""Tests for ORCA-Green. Run: python -m pytest test_green.py -q"""
+"""Tests for GreenForge. Run: python -m pytest test_green.py -q"""
 import app as g
 
 

@@ -1,23 +1,22 @@
-# ORCA-Green — Green-code verified-fix agent
+# GreenForge — Green-code verified-fix agent
 
-A direct extension of [ORCA by IssueLab](https://github.com/IssueLab-Limited/ORCA-hackathon-2026)
-(3rd place, Startup track, Meta Global AI Developer Hackathon 2026; MIT licence, preserved in
-this repo). This repo is an independent copy — not a fork — with the Green agent added under
-[`green/`](green/).
+> *Fixes, not just findings. Every fix proven before you see it.*
 
-> ORCA: *Fixes, not just findings. Every fix proven before you see it.*
-> ORCA-Green keeps the loop and swaps the verifier.
+GreenForge is a green-code verified-fix agent, built on the verified-fix loop pattern from
+[IssueLab's ORCA](https://github.com/IssueLab-Limited/ORCA-hackathon-2026) (MIT; the upstream
+code is included in this repo under `server/`, `web/`, `samples/`, `docs/` for reference).
+GreenForge keeps the loop and swaps the verifier.
 
 ## The idea
 
-ORCA's loop is **Observe → Resolve → Check → Apply**, where the Check is geometry:
+The pattern's loop is **Observe → Resolve → Check → Apply**, where the Check is geometry:
 a proposed edit is applied to the model and only reaches a human if the clash is gone,
 clearance holds, and nothing new is hit.
 
-ORCA-Green runs the **same loop** with a different verifier — **green building codes +
+GreenForge runs the **same loop** (labelled Assess → Propose → Verify → Apply in its UI) with a different verifier — **green building codes +
 energy simulation + embodied carbon** instead of geometry:
 
-| ORCA (upstream) | ORCA-Green (this extension) |
+| Geometry agent (pattern) | GreenForge |
 |---|---|
 | Observe: detect clashes in IFC/STEP | Observe: ingest IFC (IfcOpenShell, same library ORCA uses), extract envelope/HVAC/material quantities, rules-check |
 | Resolve: LLM proposes a model edit | Resolve: agent proposes glazing spec, shading fins, HVAC sizing/COP, low-carbon material swaps from an EPD database |
@@ -32,7 +31,7 @@ A fix is **verified** only if it passes the Check, on one of two tracks:
    increase EUI. (Material swaps fix carbon, not a rule; they still have to prove it.)
 
 Rejected candidates stay in the Workings log with the reason — exactly like ORCA shows
-a failed geometry check. The LLM never invents numbers: when configured, Opencode Go
+a failed geometry check. The LLM never invents numbers: when configured, OpenAI
 only *ranks* candidate ids; every number comes from the verifier.
 
 ## Codes covered (simplified thresholds — verify before real use)
@@ -52,7 +51,7 @@ all new projects with **GFA ≥ 5,000 m²** (the threshold was ≥ 30,000 m² fr
 with Green Mark compliance assessed on the submitted IFC-SG model
 ([BCA CORENET X](https://info.corenet.gov.sg)). Every mid-size project in Singapore now
 needs a model that passes green checks *before* submission — and a failed gateway costs
-a redesign cycle. ORCA-Green is the pre-submission fixer for that moment, and the same
+a redesign cycle. GreenForge is the pre-submission fixer for that moment, and the same
 loop ports to Estidama/Al Sa'fat, Mostadam and Greenship across the Gulf and Indonesia.
 
 **Buyers:** sustainability / MEP consultants and developers, per-project pricing.
@@ -69,18 +68,28 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 Docker (this is what Coolify deploys):
 
 ```bash
-docker build -t orca-green green/
-docker run -p 8000:8000 orca-green
+docker build -t greenforge green/
+docker run -p 8000:8000 greenforge
 ```
 
 Or from the repo root: `docker compose up --build` (see `docker-compose.yml`).
 
-### Model (optional): Opencode Go
+### Model (optional): OpenAI
 
-Set `OPENCODE_API_KEY` and the agent will ask Opencode Go
-(`OPENCODE_GO_MODEL`, default `mimo-v2.6-flash`, endpoint
-`https://opencode.ai/zen/go/v1`) to rank candidate fixes. Without a key it runs in
+Set `OPENAI_API_KEY` and the agent will ask OpenAI
+(`OPENAI_MODEL`, default `gpt-4o-mini`; `OPENAI_BASE_URL` for any OpenAI-compatible
+endpoint) to rank candidate fixes. Without a key it runs in
 deterministic catalogue order — the verifier, and therefore every number, is unchanged.
+
+### Agentic UI + 3D viewer
+
+The single-page UI is an agent console, not a form: a four-stage pipeline
+(Assess → Propose → Verify → Apply), a live Workings feed with YOU / AGENT / VERIFIER /
+APPLY lanes replaying each run, candidate cards that flip to VERIFIED or REJECTED with
+reasons as the verifier checks them, and Before/After bars for compliance, EUI,
+embodied carbon and annual cost. A 3D viewer (three.js + web-ifc, in-browser) renders
+the bundled demo IFC or any uploaded IFC, with one-click highlighting of glazing and
+wall elements — the envelope systems the verifier reasons about.
 
 ### Energy engine — honest label
 
