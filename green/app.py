@@ -791,7 +791,7 @@ async function loadDemo(){
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {IfcAPI, IFCWINDOW, IFCPLATE, IFCWALL, IFCWALLSTANDARDCASE} from 'web-ifc';
+import {IfcAPI, IFCWINDOW, IFCPLATE, IFCWALL, IFCWALLSTANDARDCASE, IFCROOF, IFCSLAB, IFCMEMBER} from 'web-ifc';
 const box=document.getElementById('viewer'),status=document.getElementById('vstatus');
 const setStatus=t=>{status.textContent=t;};
 window.addEventListener('error',e=>{if(!window.__gfModel) setStatus('3D viewer error: '+(e.message||'script failed to load')+'. The analysis still runs server-side.');});
@@ -802,18 +802,23 @@ const controls=new OrbitControls(camera,renderer.domElement);
 scene.add(new THREE.AmbientLight(0xffffff,0.8));
 const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(30,50,20);scene.add(sun);
 scene.add(new THREE.GridHelper(200,40,0x2f5d3a,0x1d3a24));
-function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+function animate(){requestAnimationFrame(animate);
+  if(camAnim){const k=Math.min((performance.now()-camAnim.start)/camAnim.dur,1);const e=k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
+    camera.position.lerpVectors(camAnim.p0,camAnim.p1,e);controls.target.lerpVectors(camAnim.t0,camAnim.t1,e);
+    if(k>=1)camAnim=null;}
+  if(pulseSet.length){const v=0.45+0.3*Math.sin(performance.now()*0.006);pulseSet.forEach(m=>{m.material.emissiveIntensity=v;});}
+  controls.update();renderer.render(scene,camera);}
 animate();
 const ifcAPI=new IfcAPI();
 ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.57/');
 let apiReady=null;
 function initApi(){if(!apiReady){apiReady=ifcAPI.Init().then(()=>true).catch(e=>{setStatus('3D viewer: web-ifc failed to initialise ('+e.message+').');throw e;});}return apiReady;}
-let modelGroup=null;const byType={window:[],wall:[]};
+let modelGroup=null;const byType={window:[],wall:[],roof:[],slab:[],member:[]};
 window.loadIfcBuffer=async function(buf,name){
   try{
     setStatus('Initialising web-ifc…');await initApi();
     setStatus('Parsing '+name+' in your browser…');
-    if(modelGroup){scene.remove(modelGroup);modelGroup=null;byType.window=[];byType.wall=[];}
+    if(modelGroup){scene.remove(modelGroup);modelGroup=null;byType.window=[];byType.wall=[];byType.roof=[];byType.slab=[];byType.member=[];}
     const modelID=ifcAPI.OpenModel(new Uint8Array(buf));
     modelGroup=new THREE.Group();let meshCount=0;
     const types={};
@@ -839,6 +844,9 @@ window.loadIfcBuffer=async function(buf,name){
         modelGroup.add(mesh);meshCount++;
         if(typeCode===IFCWINDOW||typeCode===IFCPLATE)byType.window.push(mesh);
         if(typeCode===IFCWALL||typeCode===IFCWALLSTANDARDCASE)byType.wall.push(mesh);
+        if(typeCode===IFCROOF)byType.roof.push(mesh);
+        if(typeCode===IFCSLAB)byType.slab.push(mesh);
+        if(typeCode===IFCMEMBER)byType.member.push(mesh);
         geom.delete();
       }
     });
@@ -848,6 +856,54 @@ window.loadIfcBuffer=async function(buf,name){
     setStatus(name+' loaded: '+meshCount+' meshes ('+byType.window.length+' glazing, '+byType.wall.length+' wall pieces). Drag to orbit, scroll to zoom.');
   }catch(e){setStatus('3D viewer could not parse this IFC ('+e.message+'). The server-side analysis still runs.');}
 };
+
+// ---- Agent camera: the agent's workings, staged in 3D ----
+let camAnim=null,pulseSet=[];
+function flyTo(pos,tgt,dur){
+  camAnim={p0:camera.position.clone(),p1:pos,t0:controls.target.clone(),t1:tgt,start:performance.now(),dur:dur||1400};
+}
+const _bb=new THREE.Box3(),_v=new THREE.Vector3();
+function frameMeshes(meshes,distFactor){
+  if(!meshes.length)return;
+  _bb.makeEmpty();meshes.forEach(m=>_bb.expandByObject(m));
+  const ctr=_bb.getCenter(new THREE.Vector3());const size=Math.max(_bb.getSize(new THREE.Vector3()).length(),4);
+  const dir=camera.position.clone().sub(controls.target).normalize();
+  if(dir.lengthSq()<0.1)dir.set(1,0.6,1).normalize();
+  const dist=size*(distFactor||0.9);
+  flyTo(ctr.clone().add(dir.multiplyScalar(dist)).add(new THREE.Vector3(0,size*0.18,0)),ctr,1500);
+}
+function resetVisuals(){
+  pulseSet=[];
+  if(!modelGroup)return;
+  modelGroup.traverse(o=>{if(o.isMesh){o.material.color.setHex(o.userData.baseColor);o.material.emissive.setHex(0x000000);o.material.opacity=o.userData.baseOpacity;o.material.transparent=o.userData.baseOpacity<1;}});
+}
+function paintSet(list,color,dimRest){
+  if(!modelGroup)return;
+  if(dimRest)modelGroup.traverse(o=>{if(o.isMesh&&!list.includes(o)){o.material.transparent=true;o.material.opacity=0.13;o.material.emissive.setHex(0x000000);}});
+  list.forEach(m=>{m.material.color.setHex(color);m.material.emissive.setHex(color);m.material.emissiveIntensity=0.55;m.material.transparent=false;m.material.opacity=1;});
+  pulseSet=list;
+}
+const SETS=()=>({glazing:byType.window,walls:byType.wall,roof:byType.roof,floors:byType.slab,structure:byType.wall.concat(byType.slab),members:byType.member});
+window.gfCue=function(cue){
+  if(!modelGroup||!cue)return;
+  if(cue.mode==='overview'){resetVisuals();frameMeshes([modelGroup],1.1);setStatus('Agent camera: full model overview while the agent assesses the building.');return;}
+  if(cue.mode==='apply'){
+    resetVisuals();
+    const all=byType.window.concat(byType.wall,byType.roof);
+    paintSet(all,0x22c55e,false);frameMeshes([modelGroup],1.15);
+    setStatus('Agent camera: the verified bundle applied — glazing, walls and roof glow green.');
+    return;
+  }
+  if(cue.mode==='focus'){
+    const list=(SETS()[cue.set]||[]);
+    if(!list.length){setStatus('Agent camera: no '+cue.set+' elements in this model to stage.');return;}
+    resetVisuals();
+    paintSet(list,cue.color, true);
+    frameMeshes(list,1.0);
+    setStatus('Agent camera: '+cue.label);
+  }
+};
+// pulse the focused set + step the camera animation inside the render loop
 window.highlight=function(kind){
   if(!modelGroup){setStatus('Load an IFC first.');return;}
   modelGroup.traverse(o=>{if(o.isMesh){o.material.color.setHex(o.userData.baseColor);o.material.emissive.setHex(0x000000);o.material.opacity=o.userData.baseOpacity;o.material.transparent=o.userData.baseOpacity<1;}});
