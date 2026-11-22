@@ -794,7 +794,7 @@ async function loadDemo(){
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {IfcAPI, IFCWINDOW, IFCPLATE, IFCWALL, IFCWALLSTANDARDCASE, IFCROOF, IFCSLAB, IFCMEMBER} from 'web-ifc';
+import {IfcAPI, IFCWINDOW, IFCPLATE, IFCWALL, IFCWALLSTANDARDCASE, IFCROOF, IFCCOVERING, IFCSLAB, IFCMEMBER} from 'web-ifc';
 const box=document.getElementById('viewer'),status=document.getElementById('vstatus');
 const setStatus=t=>{status.textContent=t;};
 window.addEventListener('error',e=>{if(!window.__gfModel) setStatus('3D viewer error: '+(e.message||'script failed to load')+'. The analysis still runs server-side.');});
@@ -848,7 +848,7 @@ window.loadIfcBuffer=async function(buf,name){
         modelGroup.add(mesh);meshCount++;
         if(typeCode===IFCWINDOW||typeCode===IFCPLATE)byType.window.push(mesh);
         if(typeCode===IFCWALL||typeCode===IFCWALLSTANDARDCASE)byType.wall.push(mesh);
-        if(typeCode===IFCROOF)byType.roof.push(mesh);
+        if(typeCode===IFCROOF||typeCode===IFCCOVERING)byType.roof.push(mesh);
         if(typeCode===IFCSLAB)byType.slab.push(mesh);
         if(typeCode===IFCMEMBER)byType.member.push(mesh);
         geom.delete();
