@@ -368,30 +368,35 @@ def llm_rank(candidates: list, code: dict, failures: list) -> tuple:
         "Reply with ONLY a JSON array of the candidate ids in your preferred "
         "application order. Do not invent ids or numbers."
     )
-    try:
-        resp = httpx.post(
-            f"{base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-                **extra_headers,
-            },
-            json={"model": model,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        text = resp.json()["choices"][0]["message"]["content"]
-        start, end = text.find("["), text.rfind("]")
-        ranked_ids = json.loads(text[start:end + 1])
-        by_id = {c["id"]: c for c in candidates}
-        ordered = [by_id[i] for i in ranked_ids if i in by_id]
-        ordered += [c for c in candidates if c["id"] not in ranked_ids]
-        if not ordered:
-            return candidates, False
-        return ordered, True
-    except Exception:
-        return candidates, False
+    # One retry: the Go endpoint occasionally drops a call (observed live as
+    # an intermittent deterministic fallback on an otherwise healthy setup).
+    for attempt in range(2):
+        try:
+            resp = httpx.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                    **extra_headers,
+                },
+                json={"model": model,
+                      "messages": [{"role": "user", "content": prompt}]},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            text = resp.json()["choices"][0]["message"]["content"]
+            start, end = text.find("["), text.rfind("]")
+            ranked_ids = json.loads(text[start:end + 1])
+            by_id = {c["id"]: c for c in candidates}
+            ordered = [by_id[i] for i in ranked_ids if i in by_id]
+            ordered += [c for c in candidates if c["id"] not in ranked_ids]
+            if not ordered:
+                return candidates, False
+            return ordered, True
+        except Exception:
+            if attempt == 1:
+                return candidates, False
+    return candidates, False
 
 
 # --------------------------------------------------------------------------- #

@@ -1,8 +1,8 @@
 # GreenForge — Live Demonstration Walkthrough
 
 Everything below was executed and observed on the production deployment at
-**https://greenforge.arifin.uk** on 22 Nov 2026 (CET), against commit
-`29f9101`. Status lines and figures are quoted as observed. Nothing here is
+**https://greenforge.arifin.uk** on 22 Nov 2026 (CET), final build commit
+`0fa1304` (plus an LLM retry in the following commit). Status lines and figures are quoted as observed. Nothing here is
 a mock-up: where a step failed during the session, the failure and its fix
 are recorded in §8.
 
@@ -106,6 +106,36 @@ UI with its red REJECTED badge and the reason it failed verification.
 
 > **APPLY:** bundle of 9 verified fixes — compliance 0/8 -> 8/8; EUI 195.9 -> 115.5 kWh/m2/yr; capex 1,673,644.44 SGD; annual saving 270,064.72 SGD; simple payback 6.2 yr.
 
+## 3b. Watch the workings in 3D — the agent camera
+
+The checklist is not the only view. Clicking **Run verified-fix loop**
+auto-loads the building in 3D (no separate demo click), and the agent's
+work is staged on the model itself by an animated camera:
+
+- **OBSERVE** — the camera flies to a ¾ overview of the whole building.
+  Status: *Agent camera: full model overview while the agent assesses the building.*
+- **Each CHECK** — the camera flies to the system under test and pulses it:
+  the glazing facade for WWR / low-e glazing / shading fins, the walls for
+  insulation, the roof plate for HVAC / PV / roof insulation, the floor
+  slabs for LED lighting, the structure for the concrete swap, the frame
+  members for the steel swap. **Green pulse = VERIFIED, red pulse =
+  REJECTED**, with the rest of the model dimmed. Status, e.g.:
+  *Agent camera: verifying Roof insulation upgrade — REJECTED, glowing red.*
+  (Observed live: the roof element pulsed saturated red for that check,
+  and the facade pulsed green for shading fins.)
+- **APPLY** — the camera pulls back to the ¾ overview and the whole
+  verified bundle glows green: facade, walls, roof plate. Status:
+  *Agent camera: the verified bundle applied — glazing, walls and roof glow green.*
+
+Each check dwells ~2.6 s so the flight and the verdict pulse are watchable;
+the full staged replay takes about a minute. You can still orbit freely
+with the mouse at any point — the camera resumes staging at the next step.
+
+Element staging follows the IFC types as modelled: glazing = IFCWINDOW +
+IFCPLATE curtain-wall panels (173), walls = IFCWALL (47), roof = IFCROOF +
+IFCCOVERING (19 — in this model the visible roof plate is a covering, and
+IFCROOF is only a small entrance canopy).
+
 ## 4. Read the Before / After panel
 
 | Metric | Before | After |
@@ -169,7 +199,16 @@ curl -X POST https://greenforge.arifin.uk/api/run \
 3. **Parse error** `flatMesh.geometries is not iterable` — web-ifc returns
    a Vector, not an array. Fixed by iterating `size()`/`get()`; verified
    locally against the demo IFC before redeploying.
-4. **Glazing highlight was invisible** — the facade is IFCPLATE
+4. **Agent-camera crash (TDZ)** — the first staged build declared its
+   camera state after the render loop started and killed the whole viewer
+   module. Fixed by declaring state before the loop; the error surfaced in
+   the status line, which is how it was diagnosed.
+5. **APPLY framing + roof glow** — flights initially inherited the previous
+   camera angle (APPLY ended top-down), checks flashed past at 1.7 s, and
+   the roof plate did not glow because it is an IFCCOVERING, not IFCROOF.
+   Fixed with a fixed ¾ cinematic angle for overview/APPLY, 2.6 s check
+   dwell, and the roof set widened to roofs + coverings.
+6. **Glazing highlight was invisible** — the facade is IFCPLATE
    curtain-wall panels, not IFCWINDOW. Glazing now covers both (173
    elements), and highlighting dims the rest of the model so the selection
    cannot be missed.
