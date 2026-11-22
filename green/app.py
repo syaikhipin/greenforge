@@ -819,7 +819,9 @@ window.loadIfcBuffer=async function(buf,name){
     const types={};
     ifcAPI.StreamAllMeshes(modelID,(flatMesh)=>{
       const typeCode=ifcAPI.GetLineType(modelID,flatMesh.expressID);
-      for(const placed of flatMesh.geometries){
+      const geos=flatMesh.geometries;
+      for(let gi=0;gi<geos.size();gi++){
+        const placed=geos.get(gi);
         const geom=ifcAPI.GetGeometry(modelID,placed.geometryExpressID);
         const verts=ifcAPI.GetVertexArray(geom.GetVertexData(),geom.GetVertexDataSize());
         const indices=ifcAPI.GetIndexArray(geom.GetIndexData(),geom.GetIndexDataSize());
