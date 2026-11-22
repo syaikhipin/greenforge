@@ -325,26 +325,41 @@ def apply_bundle(b: Building, edits: list) -> Building:
 # (Go endpoint, needs the x-opencode-session header + a browser user agent),
 # otherwise OpenAI if OPENAI_API_KEY is set.
 # --------------------------------------------------------------------------- #
+def _env_real(name: str):
+    v = os.environ.get(name)
+    return v if v and "${" not in v and not v.startswith("$") else None
+
+
 def llm_rank(candidates: list, code: dict, failures: list) -> tuple:
     """Return (ordered_candidates, llm_used). Any error -> (candidates, False)."""
-    oc_key = os.environ.get("OPENCODE_API_KEY")
-    oa_key = os.environ.get("OPENAI_API_KEY")
+    def _real(v):
+        # Coolify/compose can leave the literal "${VAR:-}" placeholder in a var;
+        # that is not a key.
+        return v if v and "${" not in v and not v.startswith("$") else None
+
+    oc_key = _real(os.environ.get("OPENCODE_API_KEY"))
+    oa_key = _real(os.environ.get("OPENAI_API_KEY"))
     if not candidates or not (oc_key or oa_key):
         return candidates, False
+    go_headers = {
+        "x-opencode-session": "greenforge-1",
+        "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"),
+    }
     if oc_key:
         key = oc_key
         model = os.environ.get("OPENCODE_GO_MODEL", "mimo-v2.6-flash")
+        if "${" in model:
+            model = "mimo-v2.6-flash"
         base_url = "https://opencode.ai/zen/go/v1"
-        extra_headers = {
-            "x-opencode-session": "greenforge-1",
-            "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                           "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"),
-        }
+        extra_headers = go_headers
     else:
         key = oa_key
         model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
         base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-        extra_headers = {}
+        # An OpenAI-compatible config pointed at Opencode still needs the
+        # session header + browser UA, or Go rejects the call.
+        extra_headers = go_headers if "opencode.ai" in base_url else {}
     ids = [c["id"] for c in candidates]
     prompt = (
         "You rank building retrofit fixes. Failing rules for code "
@@ -842,7 +857,7 @@ def demo_ifc():
 @app.get("/api/health")
 def health():
     return {"ok": True, "engine": energyplus_note(),
-            "llm_configured": bool(os.environ.get("OPENCODE_API_KEY") or os.environ.get("OPENAI_API_KEY")),
+            "llm_configured": bool(_env_real("OPENCODE_API_KEY") or _env_real("OPENAI_API_KEY")),
             "codes": list(CODES.keys())}
 
 
