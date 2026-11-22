@@ -835,7 +835,7 @@ window.loadIfcBuffer=async function(buf,name){
         const mat=new THREE.MeshLambertMaterial({color:new THREE.Color(c.x,c.y,c.z),transparent:c.w<1,opacity:c.w});
         const mesh=new THREE.Mesh(g,mat);
         mesh.matrixAutoUpdate=false;mesh.matrix.fromArray(placed.flatTransformation);
-        mesh.userData.baseColor=mat.color.getHex();mesh.userData.typeCode=typeCode;
+        mesh.userData.baseColor=mat.color.getHex();mesh.userData.baseOpacity=c.w;mesh.userData.typeCode=typeCode;
         modelGroup.add(mesh);meshCount++;
         if(typeCode===IFCWINDOW)byType.window.push(mesh);
         if(typeCode===IFCWALL||typeCode===IFCWALLSTANDARDCASE)byType.wall.push(mesh);
@@ -850,12 +850,14 @@ window.loadIfcBuffer=async function(buf,name){
 };
 window.highlight=function(kind){
   if(!modelGroup){setStatus('Load an IFC first.');return;}
-  modelGroup.traverse(o=>{if(o.isMesh){o.material.color.setHex(o.userData.baseColor);o.material.opacity=1;o.material.transparent=false;}});
+  modelGroup.traverse(o=>{if(o.isMesh){o.material.color.setHex(o.userData.baseColor);o.material.emissive.setHex(0x000000);o.material.opacity=o.userData.baseOpacity;o.material.transparent=o.userData.baseOpacity<1;}});
   if(!kind){setStatus('Colours reset.');return;}
   const list=byType[kind]||[];
   if(!list.length){setStatus('No '+(kind==='window'?'glazing':'wall')+' elements in this model.');return;}
-  list.forEach(m=>{m.material.color.setHex(kind==='window'?0x38bdf8:0xf59e0b);});
-  setStatus('Highlighted '+list.length+' '+(kind==='window'?'glazing':'wall')+' elements — the systems the verifier checks first.');
+  const hot=kind==='window'?0x38bdf8:0xf59e0b;
+  modelGroup.traverse(o=>{if(o.isMesh&&!list.includes(o)){o.material.transparent=true;o.material.opacity=0.13;}});
+  list.forEach(m=>{m.material.color.setHex(hot);m.material.emissive.setHex(hot);m.material.emissiveIntensity=0.55;m.material.transparent=false;m.material.opacity=1;});
+  setStatus('Highlighted '+list.length+' '+(kind==='window'?'glazing':'wall')+' elements (rest of model dimmed) — the systems the verifier checks first.');
 };
 </script>
 </body></html>
