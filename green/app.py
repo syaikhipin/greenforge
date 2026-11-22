@@ -892,7 +892,7 @@ window.gfCue=function(cue){
   if(cue.mode==='overview'){resetVisuals();frameMeshes([modelGroup],1.1,true);setStatus('Agent camera: full model overview while the agent assesses the building.');return;}
   if(cue.mode==='apply'){
     resetVisuals();
-    const all=byType.window.concat(byType.wall,byType.roof);
+    const all=byType.window.concat(byType.wall,byType.roof,byType.slab);
     paintSet(all,0x22c55e,false);frameMeshes([modelGroup],1.15,true);
     setStatus('Agent camera: the verified bundle applied — glazing, walls and roof glow green.');
     return;
