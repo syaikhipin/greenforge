@@ -802,6 +802,7 @@ const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1a10);
 const camera=new THREE.PerspectiveCamera(45,box.clientWidth/box.clientHeight,0.1,5000);camera.position.set(28,22,28);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(box.clientWidth,box.clientHeight);box.appendChild(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);
+let camAnim=null,pulseSet=[];
 scene.add(new THREE.AmbientLight(0xffffff,0.8));
 const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(30,50,20);scene.add(sun);
 scene.add(new THREE.GridHelper(200,40,0x2f5d3a,0x1d3a24));
@@ -861,7 +862,6 @@ window.loadIfcBuffer=async function(buf,name){
 };
 
 // ---- Agent camera: the agent's workings, staged in 3D ----
-let camAnim=null,pulseSet=[];
 function flyTo(pos,tgt,dur){
   camAnim={p0:camera.position.clone(),p1:pos,t0:controls.target.clone(),t1:tgt,start:performance.now(),dur:dur||1400};
 }
