@@ -1,0 +1,12 @@
+services:
+  orca-green:
+    build:
+      context: ./green
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      # Optional: enables Opencode Go ranking of candidate fixes.
+      # Set in Coolify's env UI, never commit a real key.
+      - OPENCODE_API_KEY=${OPENCODE_API_KEY:-}
+      - OPENCODE_GO_MODEL=${OPENCODE_GO_MODEL:-mimo-v2.6-flash}
