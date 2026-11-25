@@ -1298,7 +1298,7 @@ async function runIfc(){
 }
 </script>
 <script type="importmap">
-{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","web-ifc":"https://unpkg.com/web-ifc@0.0.57/web-ifc-api.js"}}
+{"imports":{"three":"/static/three.module.js","three/addons/":"/static/addons/","web-ifc":"/static/web-ifc-api.js"}}
 </script>
 <script type="module">
 import * as THREE from 'three';
@@ -1323,7 +1323,7 @@ function animate(){requestAnimationFrame(animate);
   controls.update();renderer.render(scene,camera);}
 animate();
 const ifcAPI=new IfcAPI();
-ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.57/');
+ifcAPI.SetWasmPath('/static/');
 let apiReady=null;
 function initApi(){if(!apiReady){apiReady=ifcAPI.Init().then(()=>true).catch(e=>{setStatus('3D viewer: web-ifc failed to initialise ('+e.message+').');throw e;});}return apiReady;}
 let modelGroup=null;const byType={window:[],wall:[],roof:[],slab:[],member:[]};
@@ -1437,6 +1437,11 @@ window.highlight=function(kind){gfFit();
 # FastAPI routes
 # --------------------------------------------------------------------------- #
 app = FastAPI(title="GreenForge", description="Green-code verified-fix agent")
+
+# Self-hosted 3D libraries (three.js + web-ifc): the viewer must not depend
+# on a CDN being reachable/fast from the visitor's network.
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
 
 class RunRequest(BaseModel):
