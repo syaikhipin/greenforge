@@ -1452,7 +1452,9 @@ class RunRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return INDEX_HTML
+    # The whole app (incl. the 3D viewer module) is inline in this page;
+    # a cached copy strands visitors on an old build. Never cache it.
+    return HTMLResponse(INDEX_HTML, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/demo.ifc")
