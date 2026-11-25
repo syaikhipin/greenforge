@@ -213,6 +213,57 @@ curl -X POST https://greenforge.arifin.uk/api/run \
    elements), and highlighting dims the rest of the model so the selection
    cannot be missed.
 
+## 9. Addendum — 25 Nov 2026: the demo rebuilt in ORCA's shape
+
+At the owner's request the demo was rebuilt to mirror the ORCA demo's
+experience (their Modal deployment was toured end to end first: landing,
+Northbank workspace, a live Propose-fixes run), and the README was
+rewritten to follow ORCA's README instead of prepending a banner to it.
+Verified live on production the same evening (final build `660e4ce`):
+
+- **Landing (dark)** — "Compliance, not just audits. Every fix verified
+  before you see it.", a recorded-run replay card, problem / how-it-works
+  tabs / **Try the check yourself** (SHGC slider: at 0.28 the ETTV
+  estimate reads 35.3 against the limit of 50 → VERIFIED) / fix kinds /
+  Northbank demo card / said-plainly / glossary + colour key.
+- **Loading** — checklist: IFC load → browser parse (1,085 elements) →
+  Observe → findings ready.
+- **Workspace (light, three panels + Activity)** — left: 8 findings, all
+  FAIL, grouped by system (ETTV 51.8 ≤50, WWR 0.65 ≤0.6, SHGC 0.55 ≤0.35,
+  COP 3 ≥3.8, HVAC 1.05 ≤0.85 kW/RT, EUI 195.9 ≤180, renewables 0 ≥0.02,
+  LPD 15 ≤12). Right: Finding / Fixes / Report tabs. Bottom: Activity
+  with a Steps table and Workings feed, replay at 1×/2×/4×.
+- **Run** — 13 steps · 1 model call (ranking) · ~29 s replay; **9 ✓
+  VERIFIED, 1 ✗ REJECTED** (roof insulation — fixes no failing rule);
+  compare card: compliance 0 → 8 of 8, EUI 195.9 → 115.5, carbon
+  3,129,108 → 1,711,223 kgCO₂e, payback 6.2 yr · capex SGD 1,673,644.44.
+  Accept on a card moves the header counter to "1 kept fixes".
+- **3D + agent camera** — in a clean browser the building renders, each
+  check narrates in the status line ("Agent camera: verifying LED
+  lighting retrofit — VERIFIED, glowing green."), and APPLY ends with
+  "the verified bundle applied — glazing, walls and roof glow green"
+  over a visibly green building.
+- **Report tab** — 0/8 → 8/8, all rules PASS after (ETTV 24.1, SHGC
+  0.28, COP 4.2, EUI 115.5, LPD 7), capex/saving/payback, download
+  button, simplified-thresholds disclaimer.
+- **README** — GreenForge's own, in ORCA's structure (hero, tagline,
+  badges, see-it-work, try-it, how-it-works, codes, what-verified-means,
+  run-locally, said-plainly, provenance); the bolt-on `GREENFORGE.md`
+  was folded in and removed.
+
+Failures during the rebuild, fixed before sign-off: (a) the workspace
+grid overflowed the viewport after a run — grid children now get
+`min-width: 0`; (b) landing copy cited an ETTV limit of 45 while
+`codes.json` enforces 50 — copy corrected to the enforced value;
+(c) the viewer module created its renderer while the workspace was
+still `display:none` (landing-first layout), sizing it 0×0 — the
+viewer now refits camera + renderer whenever a model loads or a cue
+fires, and the page waits for the CDN module (up to 20 s) instead of
+failing instantly. One environment note: in a long-lived Chrome
+profile with many heavy WebGL tabs from the day's testing, the module
+intermittently never arrived; a clean browser renders every time —
+if the viewer ever stays dark, reload in a fresh tab.
+
 ## Honest limits
 
 - Rule sets in `green/codes.json` are simplified extracts for
