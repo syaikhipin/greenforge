@@ -1281,8 +1281,8 @@ async function loadDemoModel(){
   try{
     const resp=await fetch('/demo.ifc');if(!resp.ok)throw new Error('HTTP '+resp.status);
     const buf=await resp.arrayBuffer();
-    for(let i=0;i<40&&typeof loadIfcBuffer!=='function';i++){st.textContent='Waiting for the 3D module (three.js + web-ifc from CDN)…';await sleep(500);}
-    if(typeof loadIfcBuffer!=='function')throw new Error('3D module did not arrive — check the connection and reload the page');
+    for(let i=0;i<40&&typeof loadIfcBuffer!=='function';i++){st.textContent='Waiting for the 3D module…';await sleep(500);}
+    if(typeof loadIfcBuffer!=='function')throw new Error('3D module did not start — if the viewer mentions WebGL, fully quit and restart the browser, then reload');
     await loadIfcBuffer(buf,'Northbank-Architecture.ifc');
   }catch(e){st.textContent='Demo IFC failed to load: '+e.message;}
 }
@@ -1309,8 +1309,10 @@ const setStatus=t=>{status.textContent=t;};
 window.addEventListener('error',e=>{if(!window.__gfModel) setStatus('3D viewer error: '+(e.message||'script failed to load')+'. The analysis still runs server-side.');});
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1a10);
 const camera=new THREE.PerspectiveCamera(45,box.clientWidth/box.clientHeight,0.1,5000);camera.position.set(28,22,28);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(box.clientWidth,box.clientHeight);box.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement);
+let renderer=null,controls=null,glError='';
+try{renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(box.clientWidth,box.clientHeight);box.appendChild(renderer.domElement);
+controls=new OrbitControls(camera,renderer.domElement);}
+catch(e){glError=e.message||'WebGL context failed';setStatus('3D viewer: WebGL could not start in this browser ('+glError+'). Fully quit and restart the browser, then reload this page. The analysis still runs server-side.');}
 let camAnim=null,pulseSet=[];
 scene.add(new THREE.AmbientLight(0xffffff,0.8));
 const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(30,50,20);scene.add(sun);
@@ -1320,15 +1322,15 @@ function animate(){requestAnimationFrame(animate);
     camera.position.lerpVectors(camAnim.p0,camAnim.p1,e);controls.target.lerpVectors(camAnim.t0,camAnim.t1,e);
     if(k>=1)camAnim=null;}
   if(pulseSet.length){const v=0.45+0.3*Math.sin(performance.now()*0.006);pulseSet.forEach(m=>{m.material.emissiveIntensity=v;});}
-  controls.update();renderer.render(scene,camera);}
+  if(controls)controls.update();if(renderer)renderer.render(scene,camera);}
 animate();
 const ifcAPI=new IfcAPI();
 ifcAPI.SetWasmPath('/static/');
 let apiReady=null;
 function initApi(){if(!apiReady){apiReady=ifcAPI.Init().then(()=>true).catch(e=>{setStatus('3D viewer: web-ifc failed to initialise ('+e.message+').');throw e;});}return apiReady;}
 let modelGroup=null;const byType={window:[],wall:[],roof:[],slab:[],member:[]};
-function gfFit(){const w=box.clientWidth||800,h=box.clientHeight||450;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
-window.loadIfcBuffer=async function(buf,name){gfFit();
+function gfFit(){if(!renderer)return;const w=box.clientWidth||800,h=box.clientHeight||450;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+window.loadIfcBuffer=async function(buf,name){if(!renderer){setStatus('3D viewer unavailable: WebGL could not start in this browser ('+glError+'). Fully quit and restart the browser, then reload.');return;}gfFit();
   try{
     setStatus('Initialising web-ifc…');await initApi();
     setStatus('Parsing '+name+' in your browser…');
