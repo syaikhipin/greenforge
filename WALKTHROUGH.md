@@ -306,3 +306,14 @@ creation (90f11f1). README note: per the user's clarification, README.md
 is ORCA's original with GreenForge as an additional module (banner);
 GREENFORGE.md carries the module documentation — this supersedes the
 README description in §9.
+
+
+**Correction to the Demo 2 paragraph above (same evening, user's
+clarification — "2 buildings like the ORCA demo"):** Demo 2 is no
+longer the MEP model of Northbank. It is a second, distinct building —
+**Harbourline Residences**, a synthetic six-storey residential block
+generated with IfcOpenShell (`green/samples/make_demo2.py`; 176
+elements: 108 windows, 36 columns, 24 walls, 6 slabs, roof +
+covering; web-ifc meshes all 176). Its Green Mark run: **3/8 → 8/8**,
+EUI **174.2 → 115.9**, 7 verified fixes, payback **11.3 yr** — a
+smaller building with honestly worse economics than Northbank's.

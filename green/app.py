@@ -908,26 +908,26 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
 
     <div class="demo-card" style="margin-top:1.2rem">
       <div>
-        <h3>Northbank — Building Services</h3>
-        <p>SERVICES · 1 IFC MODEL · THE SAME BUILDING, THE OTHER HALF OF THE PROBLEM. The MEP model: ducts, plant
-        and lighting. Its envelope already passes — the services fail. COP 2.6 against 3.8, 1.25 kW/RT against 0.85,
-        lighting at 18 W/m², no renewables: <b style="color:#fff">4 of 8 rules failing</b>, and the verified bundle is a
-        plant story, not a glazing story.</p>
+        <h3>Harbourline Residences</h3>
+        <p>RESIDENTIAL · 1 IFC MODEL · A DIFFERENT BUILDING, A DIFFERENT FAILURE SHAPE. A six-storey residential
+        block (synthetic sample model, generated for this demo). Unshaded glass at SHGC 0.42, tired plant at COP 2.8,
+        lighting at 14 W/m², no renewables: <b style="color:#fff">5 of 8 rules failing</b> — and an 11-year payback that
+        shows what a smaller building does to the economics.</p>
         <div class="stat-row">
-          <div class="stat"><b>4/8 → 8/8</b><span>GREEN MARK, AFTER THE BUNDLE</span></div>
-          <div class="stat"><b>178 → 114</b><span>EUI KWH/M²/YR</span></div>
-          <div class="stat"><b>4.7 yr</b><span>SIMPLE PAYBACK, COSTED</span></div>
+          <div class="stat"><b>3/8 → 8/8</b><span>GREEN MARK, AFTER THE BUNDLE</span></div>
+          <div class="stat"><b>174 → 116</b><span>EUI KWH/M²/YR</span></div>
+          <div class="stat"><b>11.3 yr</b><span>SIMPLE PAYBACK, COSTED</span></div>
         </div>
         <div class="cta-row">
-          <button class="pill btn-white" onclick="setDemo(1);enterWorkspace(true)">Open the Building Services demo</button>
+          <button class="pill btn-white" onclick="setDemo(1);enterWorkspace(true)">Open the Harbourline demo</button>
           <button class="pill btn-ghost" onclick="setDemo(1);enterWorkspace(false)">Look around first</button>
         </div>
       </div>
       <div>
         <h3 style="font-size:1.05rem">What fails here</h3>
-        <p>Plant efficiency, lighting power density and the missing renewables — the envelope rules pass untouched.</p>
+        <p>Solar gain through unshaded glass, plant efficiency, lighting power density and the missing renewables.</p>
         <h3 style="font-size:1.05rem;margin-top:.8rem">What verifies</h3>
-        <p>High-efficiency HVAC, LED retrofit, rooftop PV — plus the two carbon-track material swaps. Five fixes, none of them glazing.</p>
+        <p>Low-e glazing and shading fins, the HVAC upgrade, LED, rooftop PV — plus the two carbon-track material swaps. Seven fixes.</p>
         <h3 style="font-size:1.05rem;margin-top:.8rem">Switch any time</h3>
         <p>The workspace Menu switches between the two demos without leaving the page.</p>
       </div>
@@ -1103,7 +1103,7 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
   <div style="display:flex;align-items:center"><b>Menu</b><span style="flex:1"></span><button class="btn-line" style="padding:.3rem .7rem" onclick="toggleMenu(false)">Close</button></div>
   <h4>Demo</h4>
   <button class="mitem" onclick="switchDemo(0)">Demo 1 — Northbank, Architecture</button>
-  <button class="mitem" onclick="switchDemo(1)">Demo 2 — Northbank, Building Services (MEP)</button>
+  <button class="mitem" onclick="switchDemo(1)">Demo 2 — Harbourline Residences</button>
   <h4>Code</h4><div id="menuCodes"></div>
   <h4>Share</h4>
   <button class="mitem" id="menuReport" onclick="downloadReport()">Download submission-ready report (HTML)</button>
@@ -1119,8 +1119,8 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
 const DEMO={gfa_m2:12000,wwr:0.65,glazing_u:2.8,glazing_shgc:0.55,wall_u:1.2,roof_u:0.9,hvac_cop:3.0,hvac_kw_per_rt:1.05,lighting_wpd:15,renewable_share:0.0};
 const DEMOS=[
  {name:'Northbank — Architecture',file:'/demo.ifc',fname:'Northbank-Architecture.ifc',size:'1.1 MB',profile:DEMO},
- {name:'Northbank — Building Services (MEP)',file:'/demo2.ifc',fname:'Northbank-MEP.ifc',size:'2.4 MB',
-  profile:{gfa_m2:12000,wwr:0.45,glazing_u:2.0,glazing_shgc:0.30,wall_u:0.8,roof_u:0.6,hvac_cop:2.6,hvac_kw_per_rt:1.25,lighting_wpd:18,renewable_share:0.0}}];
+ {name:'Harbourline Residences',file:'/demo2.ifc',fname:'Harbourline-Residences.ifc',size:'0.1 MB',
+  profile:{gfa_m2:3240,wwr:0.38,glazing_u:2.4,glazing_shgc:0.42,wall_u:1.8,roof_u:1.2,hvac_cop:2.8,hvac_kw_per_rt:1.1,lighting_wpd:14,renewable_share:0.0}}];
 let curDemo=0,titleBase=DEMOS[0].name;
 function setDemo(i){curDemo=i;titleBase=DEMOS[i].name;const pr=DEMOS[i].profile;
   for(const k in pr){const el=$('in_'+k);if(el)el.value=pr[k];}
@@ -1503,8 +1503,9 @@ def index():
 
 @app.get("/demo2.ifc")
 def demo2_ifc():
-    """Second demo model: Northbank Building Services (MEP)."""
-    f = Path(__file__).parent / "samples" / "Northbank-MEP.ifc"
+    """Second demo model: Harbourline Residences (synthetic, see
+    samples/make_demo2.py)."""
+    f = Path(__file__).parent / "samples" / "Harbourline-Residences.ifc"
     return FileResponse(str(f), media_type="application/octet-stream", filename="demo2.ifc")
 
 
