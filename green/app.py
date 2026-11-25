@@ -1261,7 +1261,7 @@ function compareMode(m){if(m==='before'){gfCueSafe({mode:'overview'});if(window.
   else gfCueSafe({mode:'apply'});}
 function setSpeed(s){S.speed=s;document.querySelectorAll('.spd').forEach(b=>b.classList.toggle('on',+b.dataset.s===s));}
 function replayLast(){if(S.run)replay(S.run);}
-function updateKept(){$('keptCount').textContent=S.kept.size+' kept fixes';const sf=$('stepsFoot');if(sf&&sf.textContent.includes('steps ·')){const base=sf.textContent.split(' · ')[0]+' steps · run finished.';sf.textContent=base+' '+S.kept.size+' fix(es) kept so far.';}
+function updateKept(){$('keptCount').textContent=S.kept.size+' kept fixes';const sf=$('stepsFoot');if(sf&&sf.textContent.includes('steps ·')){const base=sf.textContent.split(' · ')[0]+' · run finished.';sf.textContent=base+' '+S.kept.size+' fix(es) kept so far.';}
   if(S.run)$('menuSession').textContent='Session: '+S.run.compliance_before.pass+'/'+S.run.compliance_before.total+' rules passing · '+S.kept.size+' kept fixes';}
 function renderReport(){
   if(!S.run)return;const run=S.run;
@@ -1326,7 +1326,8 @@ ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.57/');
 let apiReady=null;
 function initApi(){if(!apiReady){apiReady=ifcAPI.Init().then(()=>true).catch(e=>{setStatus('3D viewer: web-ifc failed to initialise ('+e.message+').');throw e;});}return apiReady;}
 let modelGroup=null;const byType={window:[],wall:[],roof:[],slab:[],member:[]};
-window.loadIfcBuffer=async function(buf,name){
+function gfFit(){const w=box.clientWidth||800,h=box.clientHeight||450;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+window.loadIfcBuffer=async function(buf,name){gfFit();
   try{
     setStatus('Initialising web-ifc…');await initApi();
     setStatus('Parsing '+name+' in your browser…');
@@ -1395,7 +1396,7 @@ function paintSet(list,color,dimRest){
   pulseSet=list;
 }
 const SETS=()=>({glazing:byType.window,walls:byType.wall,roof:byType.roof,floors:byType.slab,structure:byType.wall.concat(byType.slab),members:byType.member});
-window.gfCue=function(cue){
+window.gfCue=function(cue){gfFit();
   if(!modelGroup||!cue)return;
   if(cue.mode==='overview'){resetVisuals();frameMeshes([modelGroup],1.1,true);setStatus('Agent camera: full model overview while the agent assesses the building.');return;}
   if(cue.mode==='apply'){
@@ -1415,7 +1416,7 @@ window.gfCue=function(cue){
   }
 };
 // pulse the focused set + step the camera animation inside the render loop
-window.highlight=function(kind){
+window.highlight=function(kind){gfFit();
   if(!modelGroup){setStatus('Load an IFC first.');return;}
   modelGroup.traverse(o=>{if(o.isMesh){o.material.color.setHex(o.userData.baseColor);o.material.emissive.setHex(0x000000);o.material.opacity=o.userData.baseOpacity;o.material.transparent=o.userData.baseOpacity<1;}});
   if(!kind){setStatus('Colours reset.');return;}
