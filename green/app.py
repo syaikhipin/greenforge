@@ -630,167 +630,667 @@ a &ge;1% embodied-carbon cut, no rule regression, no EUI increase.</p>
 # --------------------------------------------------------------------------- #
 # Web UI (single page)
 # --------------------------------------------------------------------------- #
-INDEX_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>GreenForge — Green-code verified-fix agent</title>
+INDEX_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GreenForge · AI green-code coordination</title>
 <style>
-:root{--ink:#14231a;--green:#166534;--green2:#22c55e;--amber:#d97706;--red:#dc2626;--line:#cfe0d4;--panel:#fff}
-*{box-sizing:border-box}body{font-family:system-ui,Arial,sans-serif;margin:0;color:var(--ink);background:#f2f7f3}
-header{background:#0f2417;color:#e7f6ec;padding:1rem 1.25rem}header h1{margin:0;font-size:1.6rem;color:#fff}
-header p{margin:.3rem 0 0;color:#b9e4c6;max-width:70ch}
-main{max-width:1180px;margin:0 auto;padding:1rem}
-.pipe{display:flex;gap:.5rem;margin:1rem 0;flex-wrap:wrap}
-.stage{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;opacity:.45}
-.stage.active{opacity:1;border-color:var(--green2);box-shadow:0 0 0 2px #bbf7d0}
-.stage.done{opacity:1;border-color:var(--green)}
-.stage b{display:block;font-size:1rem}.stage span{font-size:.8rem;color:#48604f}
-.cols{display:grid;grid-template-columns:340px 1fr;gap:1rem}@media(max-width:900px){.cols{grid-template-columns:1fr}}
-fieldset{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:0 0 1rem;padding:.8rem 1rem}
-legend{font-weight:700;color:var(--green)}label{display:block;margin:.35rem 0;font-size:.88rem}
-input,select{width:100%;padding:.35rem;border:1px solid var(--line);border-radius:6px}
-button{background:var(--green);color:#fff;border:0;padding:.6rem 1.1rem;border-radius:8px;cursor:pointer;margin:.3rem .3rem .3rem 0;font-weight:600}
-button.ghost{background:#fff;color:var(--green);border:1px solid var(--green)}
-#viewer{height:430px;background:#0b1a10;border-radius:10px;overflow:hidden;position:relative}
-#viewer canvas{display:block}#vstatus{position:absolute;left:.6rem;bottom:.6rem;background:rgba(10,25,15,.85);color:#d1fae5;padding:.3rem .6rem;border-radius:6px;font-size:.8rem}
-.feed{background:#0f2417;border-radius:10px;padding:.8rem;height:430px;overflow:auto;font-size:.86rem}
-.msg{display:flex;gap:.6rem;margin:.45rem 0;animation:in .3s ease}
-@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
-.lane{flex:0 0 86px;text-align:center;border-radius:6px;padding:.15rem 0;font-weight:700;font-size:.72rem;height:fit-content}
-.lane.you{background:#334155;color:#e2e8f0}.lane.agent{background:#14532d;color:#bbf7d0}.lane.verifier{background:#713f12;color:#fde68a}.lane.apply{background:#1e3a8a;color:#bfdbfe}
-.msg p{margin:0;color:#e7f6ec}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.6rem;margin:.6rem 0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;animation:in .3s ease}
-.card h4{margin:.1rem 0 .3rem;font-size:.95rem}.card p{margin:.2rem 0;font-size:.82rem;color:#48604f}
-.badge{display:inline-block;border-radius:6px;padding:.1rem .5rem;font-size:.72rem;font-weight:700}
-.badge.ok{background:#dcfce7;color:#166534}.badge.no{background:#fee2e2;color:#991b1b}.badge.wait{background:#fef3c7;color:#92400e}
-.bars{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.8rem 1rem;margin:.8rem 0}
-.bar{margin:.55rem 0}.bar label{font-size:.85rem;font-weight:600}
-.track{height:14px;background:#e5efe7;border-radius:7px;position:relative;overflow:hidden}
-.fill{height:100%;border-radius:7px;transition:width 1s ease}
-table{border-collapse:collapse;width:100%;margin:.6rem 0;background:#fff}td,th{border:1px solid var(--line);padding:.35rem .5rem;text-align:left;font-size:.88rem}
-.pass{color:var(--green);font-weight:700}.fail{color:var(--red);font-weight:700}
-.small{font-size:.82rem;color:#48604f}
-</style></head><body>
-<header>
-<h1>GreenForge</h1>
-<p><b>Fixes, not just findings. Every fix proven before you see it.</b><br>
-The verified-fix loop for green building codes: <b>Assess &rarr; Propose &rarr; Verify &rarr; Apply</b>.
-The verifier is energy simulation + green codes + embodied carbon — a fix only reaches you if it
-fixes a failing rule (or cuts embodied carbon &ge;1%), regresses nothing, and does not raise EUI.</p>
-</header>
-<main>
-<div class="pipe">
-  <div class="stage" id="st0"><b>1 · Assess</b><span>Ingest IFC, rules-check the model</span></div>
-  <div class="stage" id="st1"><b>2 · Propose</b><span>Agent proposes edits (glazing, shading, HVAC, materials)</span></div>
-  <div class="stage" id="st2"><b>3 · Verify</b><span>Energy + carbon + rules re-check every edit</span></div>
-  <div class="stage" id="st3"><b>4 · Apply</b><span>Costed, compliant bundle + report</span></div>
+:root{
+  --ink:#0b1f3a; --navy:#0a1428; --bg:#070d1a; --teal:#2dd4bf; --teal-d:#0d9488;
+  --amber:#f5b942; --red:#ef4444; --green:#22c55e; --grey:#64748b; --line:#e2e8f0;
+  --panel:#ffffff; --wash:#f4f6f9; --txt:#0f172a; --mut:#5b6b82;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--txt);background:var(--wash)}
+button{font:inherit;cursor:pointer}
+h1,h2,h3{margin:0}
+/* ---------- shared ---------- */
+.pill{display:inline-flex;align-items:center;gap:.45rem;border-radius:999px;padding:.55rem 1.1rem;font-weight:600;border:1px solid transparent}
+.btn-white{background:#fff;color:var(--navy)}
+.btn-ghost{background:transparent;color:#fff;border-color:#3b4a68}
+.btn-dark{background:var(--ink);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-weight:600}
+.btn-line{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;font-weight:600}
+.btn-dark:disabled{opacity:.45;cursor:not-allowed}
+.eyebrow{letter-spacing:.18em;font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--teal)}
+.small{font-size:.8rem;color:var(--mut)}
+/* ---------- landing ---------- */
+#landing{background:var(--bg);color:#e8eef7;min-height:100vh;background-image:linear-gradient(rgba(45,212,191,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(45,212,191,.05) 1px,transparent 1px);background-size:44px 44px}
+.topbar{display:flex;align-items:center;gap:2rem;padding:.9rem 2rem;border-bottom:1px solid #1c2a47;position:sticky;top:0;background:rgba(7,13,26,.92);z-index:5}
+.wordmark{font-weight:800;font-size:1.25rem;letter-spacing:.04em;color:#fff}
+.wordmark span{color:var(--teal)}
+.topbar nav{display:flex;gap:1.4rem;margin:0 auto}
+.topbar nav a{color:#b8c4da;text-decoration:none;font-size:.9rem}
+.topbar nav a:hover{color:#fff}
+.hero{display:grid;grid-template-columns:45% 55%;gap:2rem;max-width:1400px;margin:0 auto;padding:3.5rem 2rem 2rem}
+.hero h1{font-size:3.4rem;line-height:1.04;color:#fff;font-weight:800}
+.hero .sub{color:var(--teal);font-size:1.7rem;font-weight:700;margin-top:.4rem}
+.hero p.lede{color:#aebbd2;font-size:1.05rem;line-height:1.55;max-width:34rem}
+.award{display:inline-block;background:rgba(245,185,66,.14);color:var(--amber);border:1px solid rgba(245,185,66,.45);padding:.35rem .8rem;border-radius:999px;font-size:.8rem;font-weight:600;margin:1rem 0}
+.cta-row{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin-top:1.2rem}
+.cta-row a{color:#b8c4da;font-size:.9rem}
+.replay-card{background:#0c1626;border:1px solid #1e2c49;border-radius:14px;padding:1.1rem 1.2rem;position:relative;overflow:hidden}
+.replay-card h4{margin:0 0 .6rem;font-size:.75rem;letter-spacing:.15em;color:#7d8fb3}
+.pin{position:absolute;background:var(--red);color:#fff;font-size:.72rem;font-weight:700;border-radius:999px;padding:.2rem .55rem;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.replay-line{font-size:.92rem;color:#c9d6ee;padding:.42rem 0;border-bottom:1px dashed #1e2c49;min-height:1.4rem}
+.replay-line b{color:var(--teal);letter-spacing:.08em}
+.replay-ctl{display:flex;gap:.5rem;align-items:center;margin-top:.8rem}
+.chipbtn{background:#12203a;color:#c9d6ee;border:1px solid #24365c;border-radius:999px;padding:.3rem .8rem;font-size:.8rem}
+.chipbtn.on{background:var(--teal);color:#06281f;border-color:var(--teal);font-weight:700}
+.strip{display:flex;gap:2.2rem;justify-content:center;padding:1.1rem;border-top:1px solid #1c2a47;border-bottom:1px solid #1c2a47;color:#7d8fb3;font-weight:700;letter-spacing:.14em;font-size:.8rem;flex-wrap:wrap}
+section.blk{max-width:1200px;margin:0 auto;padding:3.2rem 2rem}
+section.blk h2{color:#fff;font-size:2rem;margin:.5rem 0 1rem}
+section.blk p{color:#aebbd2;line-height:1.6;max-width:46rem}
+.loop-tabs{display:flex;gap:.5rem;margin:1.2rem 0}
+.loop-body{background:#0c1626;border:1px solid #1e2c49;border-radius:12px;padding:1.2rem;color:#c9d6ee;min-height:7.5rem;line-height:1.6}
+.loop-body b{color:#fff}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.2rem}
+.card-d{background:#0c1626;border:1px solid #1e2c49;border-radius:12px;padding:1.1rem}
+.card-d h3{color:#fff;font-size:1.05rem;margin-bottom:.4rem}
+.card-d p{font-size:.9rem}
+.demo-card{display:grid;grid-template-columns:1.2fr .8fr;gap:1.5rem;background:#0c1626;border:1px solid #1e2c49;border-radius:14px;padding:1.5rem}
+.demo-card h3{color:#fff;font-size:1.4rem}
+.stat-row{display:flex;gap:2rem;margin:1rem 0;flex-wrap:wrap}
+.stat b{display:block;font-size:1.5rem;color:#fff}
+.stat span{font-size:.78rem;color:#7d8fb3;letter-spacing:.06em}
+input[type=range]{width:100%}
+.trybox{background:#0c1626;border:1px solid #1e2c49;border-radius:12px;padding:1.2rem;max-width:640px}
+.verdict{display:inline-block;padding:.25rem .7rem;border-radius:6px;font-weight:800;font-size:.8rem;letter-spacing:.06em}
+.verdict.no{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.5)}
+.verdict.ok{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.5)}
+footer{border-top:1px solid #1c2a47;padding:1.6rem 2rem;color:#7d8fb3;font-size:.85rem;display:flex;gap:1.5rem;flex-wrap:wrap}
+footer a{color:#b8c4da}
+/* ---------- loading overlay ---------- */
+#loading{position:fixed;inset:0;background:var(--bg);color:#e8eef7;display:none;place-items:center;z-index:50}
+#loading .box{width:min(480px,90vw)}
+#loading h2{color:#fff;margin-bottom:1rem}
+.loadbar{height:8px;background:#12203a;border-radius:99px;overflow:hidden;margin:1rem 0}
+.loadbar i{display:block;height:100%;width:0;background:var(--teal);transition:width .5s}
+.loadstep{padding:.4rem 0;color:#7d8fb3;font-size:.95rem}
+.loadstep.done{color:#e8eef7}
+.loadstep.done::before{content:"✓ ";color:var(--green);font-weight:800}
+/* ---------- workspace ---------- */
+#workspace{display:none;height:100vh;flex-direction:column;background:var(--wash)}
+.ws-top{display:flex;align-items:center;gap:1.2rem;background:var(--ink);color:#fff;padding:.55rem 1rem}
+.ws-top .wordmark{font-size:1.05rem}
+.ws-top .proj{font-weight:600}
+.ws-top a{color:#b8c4da;font-size:.88rem;text-decoration:none}
+.ws-top .sp{flex:1}
+.ws-grid{flex:1;display:grid;grid-template-columns:400px 1fr 430px;grid-template-rows:1fr 300px;min-height:0}
+.panel{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:.8rem}
+.panel h3{font-size:.95rem}
+.ptabs{display:flex;gap:.4rem;border-bottom:1px solid var(--line);margin-bottom:.7rem}
+.ptab{background:none;border:none;padding:.45rem .7rem;font-weight:600;color:var(--mut);border-bottom:2px solid transparent}
+.ptab.on{color:var(--ink);border-color:var(--teal-d)}
+.finding{border:1px solid var(--line);border-left:4px solid var(--red);border-radius:8px;padding:.55rem .7rem;margin-bottom:.5rem;cursor:pointer;background:#fff}
+.finding.pass{border-left-color:var(--green);opacity:.75}
+.finding.sel{outline:2px solid var(--teal-d)}
+.finding b{font-size:.9rem}
+.finding .meta{font-size:.78rem;color:var(--mut)}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;padding:.08rem .45rem;border-radius:99px;background:#fee2e2;color:#b91c1c}
+.tag.ok{background:#dcfce7;color:#15803d}
+.tag.sys{background:#e0f2fe;color:#0369a1}
+.centre{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
+#viewer{position:relative;flex:1;background:#0b1a10;min-height:280px}
+#viewer canvas{display:block}
+#vstatus{position:absolute;left:.7rem;bottom:.6rem;color:#d1fae5;font-size:.8rem;background:rgba(4,20,12,.72);padding:.3rem .6rem;border-radius:6px;max-width:92%}
+.vtools{position:absolute;left:.6rem;top:.6rem;display:flex;flex-direction:column;gap:.35rem;z-index:3}
+.vtools button{background:rgba(10,20,40,.82);color:#e2e8f0;border:1px solid #334155;border-radius:7px;padding:.32rem .55rem;font-size:.75rem;text-align:left}
+.vtools button:hover{background:rgba(13,148,136,.85)}
+#compare{display:none;background:#fff;border-top:1px solid var(--line);padding:.7rem .9rem}
+#compare dl{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin:.6rem 0 0}
+#compare dt{font-size:.7rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+#compare dd{margin:.15rem 0 0;font-weight:700}
+#activity{grid-column:2/3;background:#fff;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#activity .a-head{display:flex;align-items:center;gap:.8rem;padding:.45rem .8rem;border-bottom:1px solid var(--line)}
+#activity .a-body{overflow-y:auto;padding:.5rem .8rem;flex:1}
+table.steps{border-collapse:collapse;width:100%;font-size:.82rem}
+table.steps th,table.steps td{border-bottom:1px solid var(--line);text-align:left;padding:.3rem .45rem}
+.feed .msg{display:flex;gap:.6rem;padding:.32rem 0;border-bottom:1px dashed #eef2f7;font-size:.85rem}
+.lane{flex:0 0 74px;font-size:.68rem;font-weight:800;letter-spacing:.05em;padding-top:.15rem}
+.lane.you{color:#7c3aed}.lane.agent{color:#0369a1}.lane.verifier{color:#b45309}.lane.apply{color:#15803d}
+.fixcard{border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;margin-bottom:.6rem}
+.fixcard h4{margin:0 0 .3rem;font-size:.95rem}
+.badge{display:inline-block;font-size:.7rem;font-weight:800;letter-spacing:.05em;padding:.18rem .55rem;border-radius:99px;background:#e2e8f0;color:#475569}
+.badge.ok{background:#dcfce7;color:#15803d}.badge.no{background:#fee2e2;color:#b91c1c}.badge.wait{background:#fef3c7;color:#92400e}
+.fixcard .acts{display:flex;gap:.5rem;margin-top:.55rem}
+#workpill{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:.5rem 1.1rem;border-radius:999px;font-weight:600;display:none;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#menu{position:fixed;top:0;right:0;width:340px;max-width:92vw;height:100vh;background:#fff;box-shadow:-12px 0 32px rgba(2,6,23,.25);z-index:45;display:none;padding:1rem;overflow-y:auto}
+#menu h4{margin:1rem 0 .4rem;font-size:.75rem;letter-spacing:.12em;color:var(--mut);text-transform:uppercase}
+#menu .mitem{display:block;width:100%;text-align:left;background:none;border:none;padding:.45rem .3rem;border-bottom:1px solid #f1f5f9;font-size:.92rem}
+select,input[type=text],input[type=number]{width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff}
+label.f{display:block;font-size:.78rem;color:var(--mut);margin:.45rem 0 .2rem}
+details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6rem}
+@media (max-width:1100px){.hero{grid-template-columns:1fr}.ws-grid{grid-template-columns:1fr;grid-template-rows:auto} #activity{grid-column:1}}
+</style>
+</head>
+<body>
+
+<!-- ==================== LANDING ==================== -->
+<div id="landing">
+  <div class="topbar">
+    <div class="wordmark">GREEN<span>FORGE</span></div>
+    <nav>
+      <a href="#how">How it works</a><a href="#try">Try the check</a><a href="#fixes">Fixes</a>
+      <a href="#codes">Codes</a><a href="#demo">Demo</a><a href="#plainly">Said plainly</a>
+    </nav>
+    <button class="pill btn-white" onclick="enterWorkspace(true)">▶ Watch GreenForge fix a building</button>
+  </div>
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow">GreenForge · AI green-code coordination</div>
+      <h1>Compliance, not just audits.</h1>
+      <div class="sub">Every fix verified before you see it.</div>
+      <p class="lede">For the sustainability consultant who makes a building pass its green code. GreenForge reads the
+      model, checks it against Green Mark, Estidama, Mostadam or Greenship, proposes a real fix for every failing
+      rule — and proves each fix with a re-run of the checks and the energy model before anyone sees it.
+      Observe. Resolve. Check. Apply.</p>
+      <div class="award">Built on the ORCA hackathon codebase (MIT) · The verifier is the product</div>
+      <div class="cta-row">
+        <button class="pill btn-white" onclick="enterWorkspace(true)">▶ Watch GreenForge fix a building</button>
+        <button class="pill btn-ghost" onclick="enterWorkspace(false,true)">Use your own model</button>
+        <a href="#demo">Pick a demo ↓</a>
+      </div>
+      <div class="replay-card" style="margin-top:1.6rem">
+        <h4>THE LOOP, RECORDED ON NORTHBANK</h4>
+        <div class="replay-line" id="rp0"><b>OBSERVE</b> — BCA Green Mark: 0/8 rules pass · EUI 195.9 · ETTV 51.8</div>
+        <div class="replay-line" id="rp1"><b>RESOLVE</b> — 10 candidate fixes proposed, ranked by the model</div>
+        <div class="replay-line" id="rp2"><b>CHECK</b> — 9 verified · 1 rejected (roof insulation fixes no failing rule)</div>
+        <div class="replay-line" id="rp3"><b>APPLY</b> — 8/8 rules pass · EUI 115.5 · payback 6.2 years</div>
+        <div class="replay-ctl">
+          <button class="chipbtn" onclick="enterWorkspace(true)">Run it live</button>
+          <span class="small" style="color:#7d8fb3">The recorded run, retold live in 3D on the model's own geometry.</span>
+        </div>
+      </div>
+    </div>
+    <div class="replay-card" style="min-height:420px">
+      <h4>NORTHBANK — ARCHITECTURE MODEL, ASSESSED LIVE</h4>
+      <div style="position:relative;height:340px;border-radius:10px;background:linear-gradient(160deg,#0e2233,#0a2e25);overflow:hidden">
+        <div style="position:absolute;inset:auto 12% 18% 12%;height:58%;background:linear-gradient(180deg,rgba(125,211,252,.35),rgba(45,212,191,.12));border:1px solid rgba(125,211,252,.5);border-radius:6px"></div>
+        <div style="position:absolute;inset:auto 12% 76% 12%;height:6%;background:rgba(148,163,184,.5);border-radius:3px"></div>
+        <div class="pin" style="top:16%;left:20%">#1 ETTV 51.8 → ≤45</div>
+        <div class="pin" style="top:38%;right:14%">#2 SHGC 0.55 → ≤0.35</div>
+        <div class="pin" style="bottom:20%;left:16%">#3 EUI 195.9 → ≤160</div>
+        <div style="position:absolute;bottom:6%;left:5%;color:#7d8fb3;font-size:.8rem">1,085 elements · glazing, walls, roof, floors — the systems the verifier checks</div>
+      </div>
+      <p class="small" style="color:#7d8fb3;margin-top:.7rem">Open the demo to orbit the real model: every check flies the camera to the system it is verifying.</p>
+    </div>
+  </div>
+
+  <div class="strip"><span>IFC</span><span>GREEN MARK · SG</span><span>ESTIDAMA · UAE</span><span>MOSTADAM · KSA</span><span>GREENSHIP · ID</span><span>EPD DATABASE</span><span>HTML REPORT</span></div>
+
+  <section class="blk">
+    <div class="eyebrow">The problem</div>
+    <h2>Every design is efficient on its own. Together, they miss the code.</h2>
+    <p>Envelope, HVAC and lighting are designed by different teams against different assumptions. The building that
+    reaches the assessor fails on the interactions: the glass that overheats the plant, the plant that eats the EUI
+    budget, the materials that blow the carbon cap. Findings in a PDF don't fix that. Verified fixes do.</p>
+    <div class="stat-row">
+      <div class="stat"><b>8 / 8</b><span>RULES FAILING ON NORTHBANK, BEFORE</span></div>
+      <div class="stat"><b>195.9</b><span>EUI KWH/M²/YR, BEFORE</span></div>
+      <div class="stat"><b>~60 s</b><span>TO A VERIFIED, COSTED FIX BUNDLE</span></div>
+    </div>
+  </section>
+
+  <section class="blk" id="how">
+    <div class="eyebrow">How it works</div>
+    <h2>Observe. Resolve. Check. Apply.</h2>
+    <div class="loop-tabs">
+      <button class="chipbtn on" data-loop="0" onclick="loopTab(0)">OBSERVE</button>
+      <button class="chipbtn" data-loop="1" onclick="loopTab(1)">RESOLVE</button>
+      <button class="chipbtn" data-loop="2" onclick="loopTab(2)">CHECK</button>
+      <button class="chipbtn" data-loop="3" onclick="loopTab(3)">APPLY</button>
+    </div>
+    <div class="loop-body" id="loopBody"></div>
+  </section>
+
+  <section class="blk" id="try">
+    <div class="eyebrow">Try the check yourself</div>
+    <h2>A fix isn't a fix until the numbers say so.</h2>
+    <p>Northbank's envelope fails ETTV (51.8 against a limit of 45). Drag the glazing's solar heat gain down and watch
+    the check — a simplified version of the same arithmetic the verifier runs on every proposed fix.</p>
+    <div class="trybox">
+      <label style="color:#c9d6ee;font-size:.9rem">Glazing SHGC: <b id="shgcVal">0.55</b> (as modelled)</label>
+      <input type="range" id="shgc" min="0.20" max="0.60" step="0.01" value="0.55" oninput="tryCheck()">
+      <p style="margin:.6rem 0">ETTV estimate: <b id="ettvVal" style="color:#fff">51.8</b> W/m² · limit 45 ·
+      <span class="verdict no" id="tryVerdict">NOT VERIFIED</span></p>
+      <button class="chipbtn" onclick="showForgeFix()">Show GreenForge's fix</button>
+      <span class="small" style="color:#7d8fb3">Low-e glazing (SHGC 0.28) + shading fins + WWR 0.60 — verified as a bundle in the demo.</span>
+    </div>
+  </section>
+
+  <section class="blk" id="fixes">
+    <div class="eyebrow">Real fixes, not notes</div>
+    <h2>Ten kinds of fix. One rule: verified, or it doesn't reach you.</h2>
+    <div class="grid3">
+      <div class="card-d"><h3>Envelope</h3><p>Reduce window-to-wall ratio · double low-e glazing · external shading fins · wall and roof insulation. Checked against ETTV, WWR and SHGC.</p></div>
+      <div class="card-d"><h3>Plant &amp; light</h3><p>High-efficiency HVAC (COP and kW/RT) · LED retrofit (W/m²) · rooftop PV (renewable share). Checked against EUI and the plant rules.</p></div>
+      <div class="card-d"><h3>Materials</h3><p>Low-carbon concrete (50% GGBS) · recycled EAF steel, from the EPD database. The carbon track: a fix verifies on a ≥1% embodied-carbon cut alone.</p></div>
+    </div>
+    <p style="margin-top:1rem"><b style="color:#fff">What “verified” means:</b> the fix repairs at least one failing rule
+    (or cuts embodied carbon ≥1%) · no rule that passed starts failing · EUI does not get worse · the bundle is
+    re-checked end to end before it is costed.</p>
+  </section>
+
+  <section class="blk" id="demo">
+    <div class="eyebrow">The demo</div>
+    <h2>One building, four codes</h2>
+    <div class="demo-card">
+      <div>
+        <h3>Northbank, a riverside office</h3>
+        <p>BUILDING · 1 IFC MODEL · 1,085 ELEMENTS. The architecture model from the ORCA baseline set, assessed
+        against BCA Green Mark: all 8 rules failing as modelled. Same building, different code, different verified
+        bundle — under Greenship the loop finds 5 fixes and takes it 1/5 → 5/5.</p>
+        <div class="stat-row">
+          <div class="stat"><b>0/8 → 8/8</b><span>GREEN MARK, AFTER THE BUNDLE</span></div>
+          <div class="stat"><b>−41%</b><span>EUI 195.9 → 115.5</span></div>
+          <div class="stat"><b>6.2 yr</b><span>SIMPLE PAYBACK, COSTED</span></div>
+        </div>
+        <div class="cta-row">
+          <button class="pill btn-white" onclick="enterWorkspace(true)">Open the Northbank demo</button>
+          <button class="pill btn-ghost" onclick="enterWorkspace(false)">Look around first</button>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:1.05rem">On the left — what failed</h3>
+        <p>Every rule, its value and its limit, grouped by system.</p>
+        <h3 style="font-size:1.05rem;margin-top:.8rem">In the middle — the model in 3D</h3>
+        <p>The agent camera flies to each system as it is checked; green is a pass, red is a rejection.</p>
+        <h3 style="font-size:1.05rem;margin-top:.8rem">On the right — pick a finding, press Propose fixes</h3>
+        <p>Verified fix cards with what each one checked. Accept the ones you keep; export the report.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="blk" id="codes">
+    <div class="eyebrow">Who it's for</div>
+    <h2>The people who carry the green submission</h2>
+    <div class="grid3">
+      <div class="card-d"><h3>Sustainability &amp; MEP consultants</h3><p>A first-pass verified bundle in a minute, with capex, saving and payback — before the detailed simulation starts.</p></div>
+      <div class="card-d"><h3>Developers</h3><p>What compliance costs, per code and per country, while the design can still change cheaply. CORENET X makes Green Mark a filing gate in Singapore from Oct 2026 for new projects ≥5,000 m².</p></div>
+      <div class="card-d"><h3>Design teams</h3><p>Fixes as model decisions — glazing spec, fins, plant size, material swaps — not redlines on a PDF.</p></div>
+    </div>
+  </section>
+
+  <section class="blk" id="plainly">
+    <div class="eyebrow">Said plainly</div>
+    <h2>What it doesn't do yet</h2>
+    <p>· The rule sets are simplified extracts for demonstration — verify against the current edition before any real
+    submission, and a QP / licensed professional must sign off. · Energy figures come from a simplified-physics
+    engine; EnergyPlus is not bundled, and the app says so on every run. · The LLM (your Opencode Go model) only
+    ranks candidate fixes — it never invents a number, and if it is unreachable the loop runs in catalogue order and
+    says so. · Accepted fixes are kept for the session and the report; GreenForge does not yet write the edits back
+    into your IFC file.</p>
+    <p style="margin-top:1rem"><b style="color:#fff">Words you'll see:</b> IFC (the open building-model format) ·
+    ETTV (envelope thermal transfer, W/m²) · EUI (energy use intensity, kWh/m²/yr) · SHGC (solar heat gain
+    coefficient) · WWR (window-to-wall ratio) · EPD (environmental product declaration) · QP (qualified person).</p>
+    <p><b style="color:#fff">3D colour key:</b> <span style="color:#38bdf8">■</span> system being checked ·
+    <span style="color:#22c55e">■</span> verified · <span style="color:#ef4444">■</span> rejected ·
+    <span style="color:#f59e0b">■</span> walls highlighted · dimmed = everything else.</p>
+  </section>
+
+  <section class="blk" style="text-align:center">
+    <h2>See a verified fix bundle in about a minute.</h2>
+    <div class="cta-row" style="justify-content:center">
+      <button class="pill btn-white" onclick="enterWorkspace(true)">▶ Watch GreenForge fix a building</button>
+      <button class="pill btn-ghost" onclick="enterWorkspace(false,true)">Use your own model</button>
+    </div>
+  </section>
+
+  <footer>
+    <span>GreenForge · Observe. Resolve. Check. Apply.</span>
+    <span>Built on the ORCA codebase by IssueLab (MIT) — the green-code verified-fix extension.</span>
+    <a href="https://github.com/syaikhipin/greenforge" target="_blank" rel="noopener">Source on GitHub</a>
+    <span>Built with IfcOpenShell, three.js and web-ifc.</span>
+  </footer>
 </div>
-<div class="cols">
-<div>
-<fieldset><legend>Building &amp; code</legend>
-<label>Code <select id="code_id"></select></label>
-<label>GFA (m2) <input id="gfa_m2" type="number" step="any"></label>
-<label>WWR <input id="wwr" type="number" step="0.01"></label>
-<label>Glazing U <input id="glazing_u" type="number" step="0.1"></label>
-<label>Glazing SHGC <input id="glazing_shgc" type="number" step="0.01"></label>
-<label>Wall U <input id="wall_u" type="number" step="0.1"></label>
-<label>Roof U <input id="roof_u" type="number" step="0.1"></label>
-<label>HVAC COP <input id="hvac_cop" type="number" step="0.1"></label>
-<label>HVAC kW/RT <input id="hvac_kw_per_rt" type="number" step="0.01"></label>
-<label>Lighting W/m2 <input id="lighting_wpd" type="number" step="0.5"></label>
-<label>Renewable share <input id="renewable_share" type="number" step="0.01"></label>
-<label><input id="use_llm" type="checkbox" style="width:auto"> Use LLM ranking (Opencode Go / OpenAI, ranks only — numbers come from the verifier)</label>
-<button onclick="run()">&#9654; Run verified-fix loop</button>
-</fieldset>
-<fieldset><legend>Model (IFC)</legend>
-<label>Upload IFC <input id="ifc" type="file" accept=".ifc"></label>
-<button class="ghost" onclick="runIfc()">Analyse uploaded IFC</button>
-<button class="ghost" onclick="loadDemo()">Load demo IFC in 3D</button>
-<p class="small">The 3D viewer renders the IFC in your browser (web-ifc + three.js). Highlight buttons colour the envelope systems the verifier reasons about.</p>
-<button class="ghost" onclick="highlight('window')">Highlight glazing</button>
-<button class="ghost" onclick="highlight('wall')">Highlight walls</button>
-<button class="ghost" onclick="highlight(null)">Reset colours</button>
-</fieldset>
+
+<!-- ==================== LOADING ==================== -->
+<div id="loading"><div class="box">
+  <div class="eyebrow">GreenForge</div>
+  <h2 id="loadTitle">Opening the Northbank demo…</h2>
+  <div class="loadbar"><i id="loadFill"></i></div>
+  <div class="loadstep" id="ls0">Loading the architecture IFC (1.1 MB)</div>
+  <div class="loadstep" id="ls1">Parsing 1,085 elements in your browser (web-ifc)</div>
+  <div class="loadstep" id="ls2">Assessing against the code — Observe</div>
+  <div class="loadstep" id="ls3">Findings ready</div>
+</div></div>
+
+<!-- ==================== WORKSPACE ==================== -->
+<div id="workspace">
+  <div class="ws-top">
+    <div class="wordmark">GREEN<span>FORGE</span></div>
+    <div class="proj" id="wsTitle">Northbank — Architecture</div>
+    <a href="#" id="exportLink" style="display:none">Download report</a>
+    <div class="sp"></div>
+    <span class="small" style="color:#b8c4da" id="keptCount">0 kept fixes</span>
+    <button class="btn-line" style="padding:.35rem .8rem" onclick="toggleMenu(true)">Menu</button>
+  </div>
+  <div class="ws-grid">
+    <!-- LEFT -->
+    <div class="panel" style="grid-row:1/3">
+      <h3>Compliance</h3>
+      <div class="ptabs">
+        <button class="ptab on" id="tabFindings" onclick="leftTab('findings')">Findings <span id="findCount"></span></button>
+        <button class="ptab" id="tabInsights" onclick="leftTab('insights')">Insights</button>
+      </div>
+      <div id="paneFindings">
+        <label class="f">Green code</label>
+        <select id="code_id" onchange="assess()"></select>
+        <label class="f">Search findings</label>
+        <input type="text" id="findSearch" placeholder="Search rules, systems, values…" oninput="renderFindings()">
+        <label class="f">Group by</label>
+        <select id="groupBy" onchange="renderFindings()"><option value="system">System</option><option value="none">None — severity order</option></select>
+        <div style="border:1px solid var(--line);border-radius:10px;padding:.7rem;margin:.8rem 0">
+          <b style="font-size:.8rem;letter-spacing:.08em">ASSESS — STEP 1 OF 4</b>
+          <p class="small" style="margin:.4rem 0">1 Assess — read the model against the code.<br>2 Propose — candidate fixes for what failed.<br>3 Check — every fix verified before you see it.<br>4 Apply — keep the bundle, export the report.</p>
+          <button class="btn-dark" style="width:100%" onclick="assess()">Assess the building</button>
+        </div>
+        <div id="findList"></div>
+        <details class="inputs">
+          <summary style="cursor:pointer;font-weight:600;font-size:.9rem">Building inputs &amp; your own model</summary>
+          <div id="inputs"></div>
+          <label class="f">Upload IFC</label>
+          <input type="file" id="ifc" accept=".ifc">
+          <button class="btn-line" style="width:100%;margin-top:.5rem" onclick="runIfc()">Analyse uploaded IFC</button>
+          <button class="btn-line" style="width:100%;margin-top:.5rem" onclick="loadDemoModel()">Reload demo IFC in 3D</button>
+        </details>
+      </div>
+      <div id="paneInsights" style="display:none"></div>
+    </div>
+    <!-- CENTRE -->
+    <div class="centre">
+      <div id="viewer">
+        <div class="vtools">
+          <button onclick="gfCueSafe({mode:'overview'})">⌂ Home view</button>
+          <button onclick="highlight('window')">Glazing</button>
+          <button onclick="highlight('wall')">Walls</button>
+          <button onclick="highlight(null)">Reset colours</button>
+        </div>
+        <div id="vstatus">3D viewer idle — load the demo IFC or upload one.</div>
+      </div>
+      <div id="compare">
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <b>Compare before and after</b>
+          <span class="sp" style="flex:1"></span>
+          <button class="chipbtn" style="background:#eef2f7;color:var(--ink);border-color:var(--line)" onclick="compareMode('before')">Before</button>
+          <button class="chipbtn on" id="cmpAfter" style="background:var(--ink);color:#fff;border-color:var(--ink)" onclick="compareMode('after')">After</button>
+          <button class="chipbtn" style="background:#eef2f7;color:var(--ink);border-color:var(--line)" onclick="compareMode('both')">Both</button>
+        </div>
+        <dl id="compareDl"></dl>
+      </div>
+    </div>
+    <!-- RIGHT -->
+    <div class="panel" style="grid-row:1/3;border-right:none;border-left:1px solid var(--line)">
+      <div class="ptabs">
+        <button class="ptab on" id="tabFinding" onclick="rightTab('finding')">Finding</button>
+        <button class="ptab" id="tabFixes" onclick="rightTab('fixes')">Fixes <span id="fixCount"></span></button>
+        <button class="ptab" id="tabReport" onclick="rightTab('report')">Report</button>
+      </div>
+      <div id="paneFinding">
+        <div id="findingDetail"><p class="small">Pick a finding on the left to see its details, then ask GreenForge for fixes.</p></div>
+        <label style="display:flex;gap:.5rem;align-items:center;font-size:.88rem;margin:.8rem 0">
+          <input type="checkbox" id="use_llm" checked style="width:auto"> LLM ranking (your Opencode Go model)
+        </label>
+        <button class="btn-dark" id="proposeBtn" style="width:100%" onclick="propose()">Propose fixes</button>
+        <p class="small" style="margin-top:.5rem">The model proposes. The verifier decides. Every fix is re-checked before it reaches this panel.</p>
+      </div>
+      <div id="paneFixes" style="display:none">
+        <p class="small" id="fixStatus">No run yet. Propose fixes from a finding.</p>
+        <div id="fixCards"></div>
+      </div>
+      <div id="paneReport" style="display:none">
+        <div id="reportBody"><p class="small">Run the loop to get the costed before/after report.</p></div>
+      </div>
+    </div>
+    <!-- BOTTOM: ACTIVITY -->
+    <div id="activity">
+      <div class="a-head">
+        <b>Activity</b>
+        <button class="ptab on" id="tabSteps" onclick="actTab('steps')">Steps</button>
+        <button class="ptab" id="tabWork" onclick="actTab('workings')">Workings</button>
+        <span style="flex:1"></span>
+        <span class="small">Replay</span>
+        <button class="chipbtn" style="background:#eef2f7;color:var(--ink);border-color:var(--line)" onclick="replayLast()">↻ Replay</button>
+        <button class="chipbtn spd on" data-s="1" onclick="setSpeed(1)">1×</button>
+        <button class="chipbtn spd" data-s="2" onclick="setSpeed(2)">2×</button>
+        <button class="chipbtn spd" data-s="4" onclick="setSpeed(4)">4×</button>
+      </div>
+      <div class="a-body">
+        <div id="stepsPane"><table class="steps"><thead><tr><th>#</th><th>Step</th><th>Who</th><th>Type</th><th>Duration</th></tr></thead><tbody id="stepsBody"><tr><td colspan="5" class="small">No run yet.</td></tr></tbody></table>
+        <p class="small" id="stepsFoot"></p></div>
+        <div id="workPane" style="display:none"><div class="feed" id="feed"></div></div>
+      </div>
+    </div>
+  </div>
 </div>
-<div>
-<div id="viewer"><div id="vstatus">3D viewer idle — load the demo IFC or upload one.</div></div>
-<h3 style="margin:.8rem 0 .3rem">Workings — watch the agent work</h3>
-<div class="feed" id="feed"><div class="msg"><div class="lane you">YOU</div><p>Set the building, then run the loop. Every proposal and every verdict will appear here, live.</p></div></div>
+
+<div id="workpill">GreenForge Working… <span style="cursor:pointer" onclick="document.getElementById('workpill').style.display='none'">×</span></div>
+
+<div id="menu">
+  <div style="display:flex;align-items:center"><b>Menu</b><span style="flex:1"></span><button class="btn-line" style="padding:.3rem .7rem" onclick="toggleMenu(false)">Close</button></div>
+  <h4>Code</h4><div id="menuCodes"></div>
+  <h4>Share</h4>
+  <button class="mitem" id="menuReport" onclick="downloadReport()">Download submission-ready report (HTML)</button>
+  <h4>Session</h4>
+  <button class="mitem" onclick="location.reload()">Start fresh</button>
+  <button class="mitem" onclick="backHome()">Back to the GreenForge home page</button>
+  <h4>About</h4>
+  <p class="small">GreenForge — the green-code verified-fix agent. Built on the ORCA codebase by IssueLab (MIT). Observe. Resolve. Check. Apply.</p>
+  <p class="small" id="menuSession"></p>
 </div>
-</div>
-<div id="out"></div>
-</main>
+
 <script>
 const DEMO={gfa_m2:12000,wwr:0.65,glazing_u:2.8,glazing_shgc:0.55,wall_u:1.2,roof_u:0.9,hvac_cop:3.0,hvac_kw_per_rt:1.05,lighting_wpd:15,renewable_share:0.0};
-for(const k in DEMO) document.getElementById(k).value=DEMO[k];
-fetch('/api/codes').then(r=>r.json()).then(d=>{const s=document.getElementById('code_id');d.codes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name+' ('+c.country+')';s.appendChild(o);});});
-function building(){const b={};for(const k in DEMO)b[k]=parseFloat(document.getElementById(k).value);return b;}
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function setStage(i,cls){for(let j=0;j<4;j++){const e=document.getElementById('st'+j);e.className='stage'+(j<i||cls==='done'&&j<=i?' done':j===i?' active':'');}}
-function say(lane,text){const f=document.getElementById('feed');const d=document.createElement('div');d.className='msg';d.innerHTML='<div class="lane '+lane+'">'+lane.toUpperCase()+'</div><p></p>';d.querySelector('p').textContent=text;f.appendChild(d);f.scrollTop=f.scrollHeight;}
+const LABELS={gfa_m2:'Gross floor area (m²)',wwr:'Window-to-wall ratio',glazing_u:'Glazing U (W/m²K)',glazing_shgc:'Glazing SHGC',wall_u:'Wall U (W/m²K)',roof_u:'Roof U (W/m²K)',hvac_cop:'HVAC COP',hvac_kw_per_rt:'HVAC kW/RT',lighting_wpd:'Lighting (W/m²)',renewable_share:'Renewable share'};
+const SYS={ettv:['Envelope','glazing'],wwr:['Envelope','glazing'],glazing_shgc:['Envelope','glazing'],wall_u:['Envelope','walls'],roof_u:['Envelope','roof'],hvac_cop:['Plant','roof'],hvac_kw_per_rt:['Plant','roof'],eui:['Energy','floors'],renewable_share:['Renewables','roof'],lighting_wpd:['Lighting','floors']};
 const FIXSET={reduce_wwr:'glazing',lowe_glazing:'glazing',shading_fins:'glazing',wall_insulation:'walls',roof_insulation:'roof',hvac_upgrade:'roof',led_lighting:'floors',rooftop_pv:'roof',low_carbon_concrete:'structure',recycled_steel:'members'};
-async function replay(r){
-  document.getElementById('feed').innerHTML='';document.getElementById('out').innerHTML='';
-  const cards=document.createElement('div');cards.className='cards';cards.id='cards';
-  say('you','Run the verified-fix loop against '+r.code.name+'.');await sleep(350);
-  for(const w of r.workings){
-    if(w.startsWith('OBSERVE')){setStage(0);say('agent',w);if(window.gfCue)gfCue({mode:'overview'});}
-    else if(w.startsWith('RESOLVE')){setStage(1);say('agent',w);document.getElementById('out').appendChild(cards);
-      r.candidates.forEach(c=>{const el=document.createElement('div');el.className='card';el.id='card-'+c.id;
-        el.innerHTML='<h4></h4><p></p><span class="badge wait">AWAITING VERIFICATION</span>';
-        el.querySelector('h4').textContent=c.title;el.querySelector('p').textContent=c.description+' Capex: '+c.capex.toLocaleString()+' '+r.code.currency+'.';cards.appendChild(el);});}
-    else if(w.startsWith('CHECK')){setStage(2);say('verifier',w);
-      const id=w.split(' ')[1].replace(':','');const v=r.verdicts.find(x=>x.id===id);const el=document.getElementById('card-'+id);
-      if(el&&v){const b=el.querySelector('.badge');b.className='badge '+(v.verified?'ok':'no');b.textContent=v.verified?'VERIFIED':'REJECTED';}
-      if(window.gfCue&&v){const cand=r.candidates.find(c=>c.id===id);gfCue({mode:'focus',set:FIXSET[id]||'glazing',color:v.verified?0x22c55e:0xef4444,label:'verifying '+(cand?cand.title:id)+' — '+(v.verified?'VERIFIED, glowing green.':'REJECTED, glowing red.')});}}
-    else if(w.startsWith('APPLY')){setStage(3);say('apply',w);if(window.gfCue)gfCue({mode:'apply'});}
-    await sleep(w.startsWith('CHECK')?2600:800);
-  }
-  setStage(3,'done');renderResults(r);
+const S={run:null,selected:null,kept:new Set(),speed:1,steps:[],autoPropose:false};
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const fmt=n=>typeof n==='number'?n.toLocaleString():n;
+
+/* ---------- landing ---------- */
+const LOOP=[`<b>Observe.</b> GreenForge parses the IFC (in your browser, and server-side with IfcOpenShell), reads the building as assessed — WWR, glazing, envelope, plant, lighting, materials — and checks it against the chosen code. Northbank as modelled: <b>0 of 8 Green Mark rules pass</b>, EUI 195.9, embodied carbon 3,129,108 kgCO₂e. The engine states itself on every run: simplified-physics, EnergyPlus not bundled.`,
+`<b>Resolve.</b> A deterministic catalogue proposes candidate fixes for what failed — glazing, shading, insulation, plant, PV, material swaps from the EPD database. Your own LLM (Opencode Go) may <b>re-rank the order</b> the verifier sees them in. It never invents a number, and if it is unreachable the catalogue order is used and the run says so.`,
+`<b>Check.</b> Every candidate is re-run through the full rule set and the energy model. A fix verifies only if it <b>repairs a failing rule</b> (or cuts embodied carbon ≥1% on the carbon track), <b>regresses nothing</b>, and <b>does not raise EUI</b>. Roof insulation on Northbank is rejected in the open: it fixes no failing rule.`,
+`<b>Apply.</b> The verified fixes — and only those — are combined and re-checked as a bundle, then costed: capex, annual saving, simple payback. <b>0/8 → 8/8, EUI 195.9 → 115.5, payback 6.2 years.</b> Accept the fixes you keep and download the submission-ready report.`];
+function loopTab(i){document.querySelectorAll('[data-loop]').forEach(b=>b.classList.toggle('on',+b.dataset.loop===i));$('loopBody').innerHTML=LOOP[i];}
+loopTab(0);
+function tryCheck(){const shgc=parseFloat($('shgc').value);$('shgcVal').textContent=shgc.toFixed(2);
+  const ettv=Math.round(51.8*(0.35+0.65*(shgc/0.55))*10)/10;$('ettvVal').textContent=ettv;
+  const ok=ettv<=45;const v=$('tryVerdict');v.className='verdict '+(ok?'ok':'no');v.textContent=ok?'VERIFIED ✓':'NOT VERIFIED';}
+function showForgeFix(){$('shgc').value=0.28;tryCheck();}
+
+/* ---------- enter / loading ---------- */
+async function enterWorkspace(autoPropose,ownModel){
+  $('landing').style.display='none';$('loading').style.display='grid';
+  const steps=[0,1,2,3];
+  for(let i=0;i<steps.length;i++){$('loadFill').style.width=((i+1)*25)+'%';await sleep(420);$('ls'+i).classList.add('done');}
+  $('workspace').style.display='flex';$('loading').style.display='none';
+  buildInputs();await loadCodes();loadDemoModel();await assess();
+  if(ownModel){document.querySelector('details.inputs').open=true;$('ifc').click();}
+  if(autoPropose){propose();}
 }
-function bar(label,before,after,unit,lowerBetter,max){
-  const bw=Math.min(100,before/max*100),aw=Math.min(100,after/max*100);
-  const good=lowerBetter?after<before:after>before;
-  return '<div class="bar"><label>'+label+': '+before.toLocaleString()+' &rarr; '+after.toLocaleString()+' '+unit+'</label>'+
-  '<div class="track"><div class="fill" style="width:'+bw+'%;background:#94a3b8"></div></div>'+
-  '<div class="track" style="margin-top:3px"><div class="fill" style="width:'+aw+'%;background:'+(good?'#22c55e':'#dc2626')+'"></div></div></div>';
-}
-function renderResults(r){
-  const rows=r.after.checks.map((c,i)=>{const b=r.observe.checks[i];
-    return '<tr><td>'+c.label+'</td><td>'+b.value+'</td><td>'+c.value+'</td><td>'+c.limit+' '+c.unit+'</td><td class="'+(c.pass?'pass':'fail')+'">'+(c.pass?'PASS':'FAIL')+'</td></tr>';}).join('');
-  document.getElementById('out').insertAdjacentHTML('beforeend',
-  '<div class="bars"><h3 style="margin:.2rem 0">Before / After</h3>'+
-  bar('Compliance (rules passing)',r.compliance_before.pass,r.compliance_after.pass,'of '+r.compliance_after.total,false,r.compliance_after.total)+
-  bar('EUI',r.observe.simulation.eui_kwh_m2_yr,r.after.simulation.eui_kwh_m2_yr,'kWh/m2/yr',true,250)+
-  bar('Embodied carbon',r.observe.carbon.total_kgco2e,r.after.carbon.total_kgco2e,'kgCO2e',true,r.observe.carbon.total_kgco2e)+
-  bar('Annual energy cost',r.costs.annual_cost_before,r.costs.annual_cost_after,r.costs.currency,true,r.costs.annual_cost_before)+
-  '<p><b>Capex '+r.costs.capex_total.toLocaleString()+' '+r.costs.currency+'</b> &nbsp;|&nbsp; Annual saving <b>'+r.costs.annual_saving.toLocaleString()+' '+r.costs.currency+'</b> &nbsp;|&nbsp; Simple payback <b>'+r.costs.simple_payback_years+' years</b> &nbsp;|&nbsp; LLM ranked: '+r.llm_used+'</p>'+
-  '<p><a href="/api/report/'+r.run_id+'"><button>Download submission-ready report (HTML)</button></a></p></div>'+
-  '<h3>Rules — before / after</h3><table><tr><th>Rule</th><th>Before</th><th>After</th><th>Limit</th><th>Status</th></tr>'+rows+'</table>'+
-  '<p class="small">'+r.disclaimer+'</p>');
-}
-async function run(){
-  setStage(0);say('you','Running… the verifier checks every proposal before you see a fix.');
-  if(!window.__gfModel){say('agent','Loading the building in 3D so you can watch each check on the model…');await loadDemo();}
+function backHome(){$('workspace').style.display='none';$('landing').style.display='block';toggleMenu(false);}
+function toggleMenu(open){$('menu').style.display=open?'block':'none';}
+
+/* ---------- setup ---------- */
+function buildInputs(){const w=$('inputs');w.innerHTML='';
+  for(const k in DEMO){const l=document.createElement('label');l.className='f';l.textContent=LABELS[k];
+    const i=document.createElement('input');i.type='number';i.step='any';i.id='in_'+k;i.value=DEMO[k];l.appendChild(i);w.appendChild(l);}}
+function building(){const b={};for(const k in DEMO)b[k]=parseFloat($('in_'+k).value);return b;}
+async function loadCodes(){const d=await (await fetch('/api/codes')).json();const s=$('code_id');s.innerHTML='';
+  const mc=$('menuCodes');mc.innerHTML='';
+  d.codes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name+' ('+c.country+')';s.appendChild(o);
+    const b=document.createElement('button');b.className='mitem';b.textContent=c.name+' — '+c.country;b.onclick=()=>{s.value=c.id;assess();};mc.appendChild(b);});}
+
+/* ---------- assess / findings ---------- */
+async function assess(){
   const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({building:building(),code_id:document.getElementById('code_id').value,use_llm:document.getElementById('use_llm').checked})});
-  replay(await r.json());
+    body:JSON.stringify({building:building(),code_id:$('code_id').value,use_llm:false})});
+  S.run=await r.json();S.kept.clear();updateKept();
+  const fails=S.run.observe.checks.filter(c=>!c.pass);
+  S.selected=fails.length?fails[0].key:S.run.observe.checks[0].key;
+  $('findCount').textContent=S.run.observe.checks.length;
+  $('wsTitle').textContent='Northbank — Architecture · '+S.run.code.name;
+  $('menuSession').textContent='Session: '+S.run.compliance_before.pass+'/'+S.run.compliance_before.total+' rules passing · '+S.kept.size+' kept fixes';
+  renderFindings();renderInsights();renderFindingDetail();renderReport();
 }
-async function runIfc(){
-  const f=document.getElementById('ifc').files[0];if(!f){alert('Choose an .ifc file first');return;}
-  loadIfcBuffer(await f.arrayBuffer(),f.name);
-  const fd=new FormData();fd.append('file',f);fd.append('code_id',document.getElementById('code_id').value);
-  const r=await fetch('/api/ifc',{method:'POST',body:fd});const d=await r.json();
-  say('agent','IFC ingest: '+d.ifc.note);replay(d.run);
+function sysOf(key){return SYS[key]||['Other','glazing'];}
+function renderFindings(){
+  const q=($('findSearch').value||'').toLowerCase();const grp=$('groupBy').value;
+  let checks=[...S.run.observe.checks].sort((a,b)=>(a.pass-b.pass));
+  if(q)checks=checks.filter(c=>(c.label+c.key+sysOf(c.key)[0]).toLowerCase().includes(q));
+  const w=$('findList');w.innerHTML='';
+  let lastGroup=null;
+  checks.forEach((c,i)=>{
+    const g=sysOf(c.key)[0];
+    if(grp==='system'&&g!==lastGroup){lastGroup=g;const h=document.createElement('div');h.className='small';h.style='font-weight:700;margin:.5rem 0 .3rem';h.textContent=g.toUpperCase();w.appendChild(h);}
+    const d=document.createElement('div');d.className='finding'+(c.pass?' pass':'')+(S.selected===c.key?' sel':'');
+    d.innerHTML='<b></b> <span class="tag '+(c.pass?'ok':'')+'">'+(c.pass?'PASS':'FAIL')+'</span> <span class="tag sys"></span><div class="meta"></div>';
+    d.querySelector('b').textContent='#'+(i+1)+' '+c.label;
+    d.querySelector('.sys').textContent=g;
+    d.querySelector('.meta').textContent='Value '+c.value+' · limit '+c.limit+' '+c.unit;
+    d.onclick=()=>{S.selected=c.key;renderFindings();renderFindingDetail();
+      if(window.gfCue)gfCue({mode:'focus',set:sysOf(c.key)[1],color:c.pass?0x22c55e:0xef4444,label:'finding: '+c.label+' — '+(c.pass?'passing.':'failing at '+c.value+' against a limit of '+c.limit+' '+c.unit+'.')});};
+    w.appendChild(d);
+  });
 }
-async function loadDemo(){
-  const st=document.getElementById('vstatus');st.textContent='Loading demo IFC…';
+function renderInsights(){
+  const fails=S.run.observe.checks.filter(c=>!c.pass);const bySys={};
+  fails.forEach(c=>{const g=sysOf(c.key)[0];(bySys[g]=bySys[g]||[]).push(c);});
+  const w=$('paneInsights');w.innerHTML='<p class="small">Same system, many failures. GreenForge groups findings that one plan can fix together.</p>';
+  Object.entries(bySys).forEach(([g,cs])=>{
+    const d=document.createElement('div');d.className='fixcard';
+    d.innerHTML='<h4>'+cs.length+' findings, 1 system — '+g+'</h4><p class="small">'+cs.map(c=>c.label).join(' · ')+'. One verified bundle usually carries all of them.</p>';
+    w.appendChild(d);});
+  const carb=document.createElement('div');carb.className='fixcard';
+  carb.innerHTML='<h4>Carbon track</h4><p class="small">Embodied carbon '+fmt(S.run.observe.carbon.total_kgco2e)+' kgCO₂e. Material swaps verify on a ≥1% cut even when no rule is failing.</p>';
+  w.appendChild(carb);
+}
+function renderFindingDetail(){
+  const c=S.run.observe.checks.find(x=>x.key===S.selected);if(!c)return;
+  const after=S.run.after.checks.find(x=>x.key===c.key);
+  $('findingDetail').innerHTML='<h3 style="margin-bottom:.3rem">'+c.label+'</h3>'+
+    '<p><span class="tag '+(c.pass?'ok':'')+'">'+(c.pass?'PASSING':'FAILING')+'</span> <span class="tag sys">'+sysOf(c.key)[0]+'</span></p>'+
+    '<p class="small">Value <b>'+c.value+'</b> against a limit of <b>'+c.limit+' '+c.unit+'</b> under '+S.run.code.name+'.</p>'+
+    '<p class="small"><b>What needs to change:</b> '+(c.pass?'Nothing — this rule already passes. Keep it that way: the verifier rejects any fix that regresses it.':'A verified fix must move this value inside the limit without breaking any other rule or raising EUI. Propose fixes and watch each candidate get checked.')+'</p>'+
+    (after?'<p class="small">After the last verified bundle: <b>'+after.value+' '+after.unit+'</b> — '+(after.pass?'PASS':'still failing')+'.</p>':'');
+}
+function leftTab(t){$('paneFindings').style.display=t==='findings'?'block':'none';$('paneInsights').style.display=t==='insights'?'block':'none';
+  $('tabFindings').classList.toggle('on',t==='findings');$('tabInsights').classList.toggle('on',t==='insights');}
+function rightTab(t){['finding','fixes','report'].forEach(x=>{$('pane'+x[0].toUpperCase()+x.slice(1)).style.display=x===t?'block':'none';$('tab'+x[0].toUpperCase()+x.slice(1)).classList.toggle('on',x===t);});}
+function actTab(t){$('stepsPane').style.display=t==='steps'?'block':'none';$('workPane').style.display=t==='workings'?'block':'none';
+  $('tabSteps').classList.toggle('on',t==='steps');$('tabWork').classList.toggle('on',t==='workings');}
+function gfCueSafe(cue){if(window.gfCue)gfCue(cue);}
+
+/* ---------- the loop ---------- */
+function say(lane,text){const f=$('feed');const d=document.createElement('div');d.className='msg';
+  d.innerHTML='<div class="lane '+lane+'">'+lane.toUpperCase()+'</div><p style="margin:0"></p>';
+  d.querySelector('p').textContent=text;f.appendChild(d);f.scrollTop=f.scrollHeight;}
+function stepRow(n,name,who,type,t0){const tb=$('stepsBody');
+  if(n===1)tb.innerHTML='';
+  const tr=document.createElement('tr');tr.innerHTML='<td>'+n+'</td><td></td><td>'+who+'</td><td>'+type+'</td><td>'+((performance.now()-t0)/1000).toFixed(1)+' s</td>';
+  tr.children[1].textContent=name;tb.appendChild(tr);}
+async function propose(){
+  rightTab('fixes');actTab('workings');
+  $('proposeBtn').disabled=true;$('proposeBtn').textContent='Working…';$('workpill').style.display='block';
+  if(!window.__gfModel){say('agent','Loading the building in 3D so you can watch each check on the model…');await loadDemoModel();}
+  const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({building:building(),code_id:$('code_id').value,use_llm:$('use_llm').checked})});
+  const run=await r.json();S.run=run;S.kept.clear();updateKept();
+  await replay(run);
+  $('proposeBtn').disabled=false;$('proposeBtn').textContent='Propose fixes';$('workpill').style.display='none';
+  renderFindings();renderFindingDetail();renderReport();
+  $('exportLink').style.display='inline';$('exportLink').href='/api/report/'+run.run_id;
+}
+async function replay(run){
+  $('feed').innerHTML='';$('fixCards').innerHTML='';$('stepsBody').innerHTML='';$('stepsFoot').textContent='';
+  $('fixStatus').textContent='Running the loop against '+run.code.name+'…';
+  const t0=performance.now();let n=0;
+  say('you','Propose fixes for '+run.code.name+'.');await sleep(300/S.speed);
+  for(const w of run.workings){
+    n++;
+    if(w.startsWith('OBSERVE')){say('agent',w);stepRow(n,'Observe — read the building against the code','GreenForge','tool',t0);
+      gfCueSafe({mode:'overview'});await sleep(800/S.speed);}
+    else if(w.startsWith('RESOLVE')){say('agent',w);stepRow(n,'Resolve — candidate fixes proposed'+(run.llm_used?' (LLM-ranked)':''),run.llm_used?'Your LLM':'GreenForge',run.llm_used?'model':'tool',t0);
+      run.candidates.forEach(c=>{const el=document.createElement('div');el.className='fixcard';el.id='card-'+c.id;
+        el.innerHTML='<h4></h4><p class="small"></p><span class="badge wait">AWAITING VERIFICATION</span>';
+        el.querySelector('h4').textContent=c.title;
+        el.querySelector('p').textContent=c.description+' Capex: '+fmt(c.capex)+' '+run.code.currency+'.';
+        $('fixCards').appendChild(el);});
+      $('fixCount').textContent=run.candidates.length;await sleep(800/S.speed);}
+    else if(w.startsWith('CHECK')){say('verifier',w);
+      const id=w.split(' ')[1].replace(':','');const v=run.verdicts.find(x=>x.id===id);
+      stepRow(n,'Check — '+(v?v.title:id),'Verifier','tool',t0);
+      const el=$('card-'+id);
+      if(el&&v){const b=el.querySelector('.badge');b.className='badge '+(v.verified?'ok':'no');b.textContent=v.verified?'✓ VERIFIED':'✗ REJECTED';
+        const p=document.createElement('p');p.className='small';p.textContent='What it checked: '+v.reason+'.';el.appendChild(p);
+        if(v.verified){const acts=document.createElement('div');acts.className='acts';
+          const acc=document.createElement('button');acc.className='btn-dark';acc.textContent='Accept';
+          const rej=document.createElement('button');rej.className='btn-line';rej.textContent='Reject';
+          acc.onclick=()=>{S.kept.add(id);updateKept();acc.disabled=true;acc.textContent='Kept ✓';rej.disabled=true;};
+          rej.onclick=()=>{S.kept.delete(id);updateKept();el.style.opacity=.5;acc.disabled=true;rej.textContent='Rejected';};
+          acts.appendChild(acc);acts.appendChild(rej);el.appendChild(acts);}}
+      if(v)gfCueSafe({mode:'focus',set:FIXSET[id]||'glazing',color:v.verified?0x22c55e:0xef4444,label:'verifying '+(v.title)+' — '+(v.verified?'VERIFIED, glowing green.':'REJECTED, glowing red.')});
+      await sleep(2600/S.speed);}
+    else if(w.startsWith('APPLY')){say('apply',w);stepRow(n,'Apply — verified bundle, costed','GreenForge','tool',t0);
+      gfCueSafe({mode:'apply'});
+      $('fixStatus').innerHTML='<b>'+run.verified_fixes.length+' verified fixes</b> — GreenForge is holding the bundle until you decide. Accept the fixes you keep; the report carries the whole verified bundle.';
+      showCompare(run);await sleep(900/S.speed);}
+  }
+  const secs=((performance.now()-t0)/1000).toFixed(1);
+  $('stepsFoot').textContent=n+' steps · '+(run.llm_used?'1 model call (ranking)':'0 model calls')+' · '+secs+' s replay. The run has finished. It is not kept yet: Accept fixes to keep them.';
+  actTab('steps');
+}
+function showCompare(run){
+  $('compare').style.display='block';
+  $('compareDl').innerHTML=
+    '<div><dt>Compliance</dt><dd>'+run.compliance_before.pass+' → '+run.compliance_after.pass+' of '+run.compliance_after.total+' rules</dd></div>'+
+    '<div><dt>EUI</dt><dd>'+run.observe.simulation.eui_kwh_m2_yr+' → '+run.after.simulation.eui_kwh_m2_yr+' kWh/m²/yr</dd></div>'+
+    '<div><dt>Embodied carbon</dt><dd>'+fmt(run.observe.carbon.total_kgco2e)+' → '+fmt(run.after.carbon.total_kgco2e)+' kgCO₂e</dd></div>'+
+    '<div><dt>Payback</dt><dd>'+run.costs.simple_payback_years+' yr · capex '+fmt(run.costs.capex_total)+' '+run.costs.currency+'</dd></div>';
+}
+function compareMode(m){if(m==='before'){gfCueSafe({mode:'overview'});if(window.highlight)highlight(null);}
+  else gfCueSafe({mode:'apply'});}
+function setSpeed(s){S.speed=s;document.querySelectorAll('.spd').forEach(b=>b.classList.toggle('on',+b.dataset.s===s));}
+function replayLast(){if(S.run)replay(S.run);}
+function updateKept(){$('keptCount').textContent=S.kept.size+' kept fixes';
+  if(S.run)$('menuSession').textContent='Session: '+S.run.compliance_before.pass+'/'+S.run.compliance_before.total+' rules passing · '+S.kept.size+' kept fixes';}
+function renderReport(){
+  if(!S.run)return;const run=S.run;
+  const rows=run.after.checks.map((c,i)=>{const b=run.observe.checks[i];
+    return '<tr><td>'+c.label+'</td><td>'+b.value+'</td><td>'+c.value+'</td><td>'+c.limit+' '+c.unit+'</td><td>'+(c.pass?'PASS':'FAIL')+'</td></tr>';}).join('');
+  $('reportBody').innerHTML='<p><b>'+run.code.name+'</b> — compliance '+run.compliance_before.pass+'/'+run.compliance_before.total+' → <b>'+run.compliance_after.pass+'/'+run.compliance_after.total+'</b></p>'+
+    '<p class="small">Capex <b>'+fmt(run.costs.capex_total)+' '+run.costs.currency+'</b> · annual saving <b>'+fmt(run.costs.annual_saving)+' '+run.costs.currency+'</b> · payback <b>'+run.costs.simple_payback_years+' years</b> · LLM ranked: '+run.llm_used+'</p>'+
+    '<table class="steps"><tr><th>Rule</th><th>Before</th><th>After</th><th>Limit</th><th>Status</th></tr>'+rows+'</table>'+
+    '<p style="margin-top:.7rem"><a href="/api/report/'+run.run_id+'"><button class="btn-dark">Download submission-ready report (HTML)</button></a></p>'+
+    '<p class="small">'+run.disclaimer+'</p>';
+}
+function downloadReport(){if(S.run)window.open('/api/report/'+S.run.run_id,'_blank');}
+
+/* ---------- IFC ---------- */
+async function loadDemoModel(){
+  const st=$('vstatus');st.textContent='Loading demo IFC…';
   try{
     const resp=await fetch('/demo.ifc');if(!resp.ok)throw new Error('HTTP '+resp.status);
     const buf=await resp.arrayBuffer();
     if(typeof loadIfcBuffer!=='function')throw new Error('3D module still loading — wait a few seconds and retry');
     await loadIfcBuffer(buf,'Northbank-Architecture.ifc');
   }catch(e){st.textContent='Demo IFC failed to load: '+e.message;}
+}
+async function runIfc(){
+  const f=$('ifc').files[0];if(!f){alert('Choose an .ifc file first');return;}
+  loadIfcBuffer(await f.arrayBuffer(),f.name);
+  const fd=new FormData();fd.append('file',f);fd.append('code_id',$('code_id').value);
+  const r=await fetch('/api/ifc',{method:'POST',body:fd});const d=await r.json();
+  S.run=d.run;S.selected=(d.run.observe.checks.find(c=>!c.pass)||d.run.observe.checks[0]).key;
+  $('wsTitle').textContent=f.name+' · '+d.run.code.name;
+  say('agent','IFC ingest: '+d.ifc.note);
+  renderFindings();renderInsights();renderFindingDetail();renderReport();
 }
 </script>
 <script type="importmap">
