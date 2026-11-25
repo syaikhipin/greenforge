@@ -879,7 +879,7 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
 
   <section class="blk" id="demo">
     <div class="eyebrow">The demo</div>
-    <h2>One building, four codes</h2>
+    <h2>Two demos, four codes</h2>
     <div class="demo-card">
       <div>
         <h3>Northbank, a riverside office</h3>
@@ -892,8 +892,8 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
           <div class="stat"><b>6.2 yr</b><span>SIMPLE PAYBACK, COSTED</span></div>
         </div>
         <div class="cta-row">
-          <button class="pill btn-white" onclick="enterWorkspace(true)">Open the Northbank demo</button>
-          <button class="pill btn-ghost" onclick="enterWorkspace(false)">Look around first</button>
+          <button class="pill btn-white" onclick="setDemo(0);enterWorkspace(true)">Open the Northbank demo</button>
+          <button class="pill btn-ghost" onclick="setDemo(0);enterWorkspace(false)">Look around first</button>
         </div>
       </div>
       <div>
@@ -903,6 +903,33 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
         <p>The agent camera flies to each system as it is checked; green is a pass, red is a rejection.</p>
         <h3 style="font-size:1.05rem;margin-top:.8rem">On the right — pick a finding, press Propose fixes</h3>
         <p>Verified fix cards with what each one checked. Accept the ones you keep; export the report.</p>
+      </div>
+    </div>
+
+    <div class="demo-card" style="margin-top:1.2rem">
+      <div>
+        <h3>Northbank — Building Services</h3>
+        <p>SERVICES · 1 IFC MODEL · THE SAME BUILDING, THE OTHER HALF OF THE PROBLEM. The MEP model: ducts, plant
+        and lighting. Its envelope already passes — the services fail. COP 2.6 against 3.8, 1.25 kW/RT against 0.85,
+        lighting at 18 W/m², no renewables: <b style="color:#fff">4 of 8 rules failing</b>, and the verified bundle is a
+        plant story, not a glazing story.</p>
+        <div class="stat-row">
+          <div class="stat"><b>4/8 → 8/8</b><span>GREEN MARK, AFTER THE BUNDLE</span></div>
+          <div class="stat"><b>178 → 114</b><span>EUI KWH/M²/YR</span></div>
+          <div class="stat"><b>4.7 yr</b><span>SIMPLE PAYBACK, COSTED</span></div>
+        </div>
+        <div class="cta-row">
+          <button class="pill btn-white" onclick="setDemo(1);enterWorkspace(true)">Open the Building Services demo</button>
+          <button class="pill btn-ghost" onclick="setDemo(1);enterWorkspace(false)">Look around first</button>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:1.05rem">What fails here</h3>
+        <p>Plant efficiency, lighting power density and the missing renewables — the envelope rules pass untouched.</p>
+        <h3 style="font-size:1.05rem;margin-top:.8rem">What verifies</h3>
+        <p>High-efficiency HVAC, LED retrofit, rooftop PV — plus the two carbon-track material swaps. Five fixes, none of them glazing.</p>
+        <h3 style="font-size:1.05rem;margin-top:.8rem">Switch any time</h3>
+        <p>The workspace Menu switches between the two demos without leaving the page.</p>
       </div>
     </div>
   </section>
@@ -956,7 +983,7 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
   <h2 id="loadTitle">Opening the Northbank demo…</h2>
   <div class="loadbar"><i id="loadFill"></i></div>
   <div class="loadstep" id="ls0">Loading the architecture IFC (1.1 MB)</div>
-  <div class="loadstep" id="ls1">Parsing 1,085 elements in your browser (web-ifc)</div>
+  <div class="loadstep" id="ls1">Parsing the model in your browser (web-ifc)</div>
   <div class="loadstep" id="ls2">Assessing against the code — Observe</div>
   <div class="loadstep" id="ls3">Findings ready</div>
 </div></div>
@@ -1074,6 +1101,9 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
 
 <div id="menu">
   <div style="display:flex;align-items:center"><b>Menu</b><span style="flex:1"></span><button class="btn-line" style="padding:.3rem .7rem" onclick="toggleMenu(false)">Close</button></div>
+  <h4>Demo</h4>
+  <button class="mitem" onclick="switchDemo(0)">Demo 1 — Northbank, Architecture</button>
+  <button class="mitem" onclick="switchDemo(1)">Demo 2 — Northbank, Building Services (MEP)</button>
   <h4>Code</h4><div id="menuCodes"></div>
   <h4>Share</h4>
   <button class="mitem" id="menuReport" onclick="downloadReport()">Download submission-ready report (HTML)</button>
@@ -1087,6 +1117,16 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
 
 <script>
 const DEMO={gfa_m2:12000,wwr:0.65,glazing_u:2.8,glazing_shgc:0.55,wall_u:1.2,roof_u:0.9,hvac_cop:3.0,hvac_kw_per_rt:1.05,lighting_wpd:15,renewable_share:0.0};
+const DEMOS=[
+ {name:'Northbank — Architecture',file:'/demo.ifc',fname:'Northbank-Architecture.ifc',size:'1.1 MB',profile:DEMO},
+ {name:'Northbank — Building Services (MEP)',file:'/demo2.ifc',fname:'Northbank-MEP.ifc',size:'2.4 MB',
+  profile:{gfa_m2:12000,wwr:0.45,glazing_u:2.0,glazing_shgc:0.30,wall_u:0.8,roof_u:0.6,hvac_cop:2.6,hvac_kw_per_rt:1.25,lighting_wpd:18,renewable_share:0.0}}];
+let curDemo=0,titleBase=DEMOS[0].name;
+function setDemo(i){curDemo=i;titleBase=DEMOS[i].name;const pr=DEMOS[i].profile;
+  for(const k in pr){const el=$('in_'+k);if(el)el.value=pr[k];}
+  $('loadTitle').textContent='Opening the '+DEMOS[i].name+' demo…';
+  $('ls0').textContent='Loading the IFC ('+DEMOS[i].size+')';
+  $('wsTitle').textContent=DEMOS[i].name;}
 const LABELS={gfa_m2:'Gross floor area (m²)',wwr:'Window-to-wall ratio',glazing_u:'Glazing U (W/m²K)',glazing_shgc:'Glazing SHGC',wall_u:'Wall U (W/m²K)',roof_u:'Roof U (W/m²K)',hvac_cop:'HVAC COP',hvac_kw_per_rt:'HVAC kW/RT',lighting_wpd:'Lighting (W/m²)',renewable_share:'Renewable share'};
 const SYS={ettv:['Envelope','glazing'],wwr:['Envelope','glazing'],glazing_shgc:['Envelope','glazing'],wall_u:['Envelope','walls'],roof_u:['Envelope','roof'],hvac_cop:['Plant','roof'],hvac_kw_per_rt:['Plant','roof'],eui:['Energy','floors'],renewable_share:['Renewables','roof'],lighting_wpd:['Lighting','floors']};
 const FIXSET={reduce_wwr:'glazing',lowe_glazing:'glazing',shading_fins:'glazing',wall_insulation:'walls',roof_insulation:'roof',hvac_upgrade:'roof',led_lighting:'floors',rooftop_pv:'roof',low_carbon_concrete:'structure',recycled_steel:'members'};
@@ -1113,18 +1153,20 @@ async function enterWorkspace(autoPropose,ownModel){
   const steps=[0,1,2,3];
   for(let i=0;i<steps.length;i++){$('loadFill').style.width=((i+1)*25)+'%';await sleep(420);$('ls'+i).classList.add('done');}
   $('workspace').style.display='flex';$('loading').style.display='none';
-  buildInputs();await loadCodes();loadDemoModel();await assess();
+  buildInputs();setDemo(curDemo);await loadCodes();loadDemoModel();await assess();
   if(ownModel){document.querySelector('details.inputs').open=true;$('ifc').click();}
   if(autoPropose){propose();}
 }
 function backHome(){$('workspace').style.display='none';$('landing').style.display='block';toggleMenu(false);}
+async function switchDemo(i){if(i===curDemo){toggleMenu(false);return;}curDemo=i;window.__gfModel=false;
+  setDemo(i);toggleMenu(false);await assess();loadDemoModel();}
 function toggleMenu(open){$('menu').style.display=open?'block':'none';}
 
 /* ---------- setup ---------- */
-function buildInputs(){const w=$('inputs');w.innerHTML='';
-  for(const k in DEMO){const l=document.createElement('label');l.className='f';l.textContent=LABELS[k];
-    const i=document.createElement('input');i.type='number';i.step='any';i.id='in_'+k;i.value=DEMO[k];l.appendChild(i);w.appendChild(l);}}
-function building(){const b={};for(const k in DEMO)b[k]=parseFloat($('in_'+k).value);return b;}
+function buildInputs(){const w=$('inputs');w.innerHTML='';const pr=DEMOS[curDemo].profile;
+  for(const k in pr){const l=document.createElement('label');l.className='f';l.textContent=LABELS[k];
+    const i=document.createElement('input');i.type='number';i.step='any';i.id='in_'+k;i.value=pr[k];l.appendChild(i);w.appendChild(l);}}
+function building(){const b={};for(const k in DEMOS[curDemo].profile)b[k]=parseFloat($('in_'+k).value);return b;}
 async function loadCodes(){const d=await (await fetch('/api/codes')).json();const s=$('code_id');s.innerHTML='';
   const mc=$('menuCodes');mc.innerHTML='';
   d.codes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name+' ('+c.country+')';s.appendChild(o);
@@ -1138,7 +1180,7 @@ async function assess(){
   const fails=S.run.observe.checks.filter(c=>!c.pass);
   S.selected=fails.length?fails[0].key:S.run.observe.checks[0].key;
   $('findCount').textContent=S.run.observe.checks.length;
-  $('wsTitle').textContent='Northbank — Architecture · '+S.run.code.name;
+  $('wsTitle').textContent=titleBase+' · '+S.run.code.name;
   $('menuSession').textContent='Session: '+S.run.compliance_before.pass+'/'+S.run.compliance_before.total+' rules passing · '+S.kept.size+' kept fixes';
   renderFindings();renderInsights();renderFindingDetail();renderReport();
 }
@@ -1279,11 +1321,11 @@ function downloadReport(){if(S.run)window.open('/api/report/'+S.run.run_id,'_bla
 async function loadDemoModel(){
   const st=$('vstatus');st.textContent='Loading demo IFC…';
   try{
-    const resp=await fetch('/demo.ifc');if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const resp=await fetch(DEMOS[curDemo].file);if(!resp.ok)throw new Error('HTTP '+resp.status);
     const buf=await resp.arrayBuffer();
     for(let i=0;i<40&&typeof loadIfcBuffer!=='function';i++){st.textContent='Waiting for the 3D module…';await sleep(500);}
     if(typeof loadIfcBuffer!=='function')throw new Error('3D module did not start — if the viewer mentions WebGL, fully quit and restart the browser, then reload');
-    await loadIfcBuffer(buf,'Northbank-Architecture.ifc');
+    await loadIfcBuffer(buf,DEMOS[curDemo].fname);
   }catch(e){st.textContent='Demo IFC failed to load: '+e.message;}
 }
 async function runIfc(){
@@ -1292,7 +1334,7 @@ async function runIfc(){
   const fd=new FormData();fd.append('file',f);fd.append('code_id',$('code_id').value);
   const r=await fetch('/api/ifc',{method:'POST',body:fd});const d=await r.json();
   S.run=d.run;S.selected=(d.run.observe.checks.find(c=>!c.pass)||d.run.observe.checks[0]).key;
-  $('wsTitle').textContent=f.name+' · '+d.run.code.name;
+  titleBase=f.name;$('wsTitle').textContent=f.name+' · '+d.run.code.name;
   say('agent','IFC ingest: '+d.ifc.note);
   renderFindings();renderInsights();renderFindingDetail();renderReport();
 }
@@ -1457,6 +1499,13 @@ def index():
     # The whole app (incl. the 3D viewer module) is inline in this page;
     # a cached copy strands visitors on an old build. Never cache it.
     return HTMLResponse(INDEX_HTML, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/demo2.ifc")
+def demo2_ifc():
+    """Second demo model: Northbank Building Services (MEP)."""
+    f = Path(__file__).parent / "samples" / "Northbank-MEP.ifc"
+    return FileResponse(str(f), media_type="application/octet-stream", filename="demo2.ifc")
 
 
 @app.get("/demo.ifc")
