@@ -717,7 +717,10 @@ footer a{color:#b8c4da}
 .ws-top .proj{font-weight:600}
 .ws-top a{color:#b8c4da;font-size:.88rem;text-decoration:none}
 .ws-top .sp{flex:1}
-.ws-grid{flex:1;display:grid;grid-template-columns:400px 1fr 430px;grid-template-rows:1fr 300px;min-height:0}
+.ws-grid{flex:1;display:grid;grid-template-columns:400px minmax(0,1fr) 430px;grid-template-rows:1fr 300px;min-height:0;min-width:0}
+.ws-grid>*{min-width:0}
+.feed p{word-break:break-word}
+#compare dl{grid-template-columns:repeat(4,minmax(0,1fr))}
 .panel{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:.8rem}
 .panel h3{font-size:.95rem}
 .ptabs{display:flex;gap:.4rem;border-bottom:1px solid var(--line);margin-bottom:.7rem}
@@ -810,7 +813,7 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
       <div style="position:relative;height:340px;border-radius:10px;background:linear-gradient(160deg,#0e2233,#0a2e25);overflow:hidden">
         <div style="position:absolute;inset:auto 12% 18% 12%;height:58%;background:linear-gradient(180deg,rgba(125,211,252,.35),rgba(45,212,191,.12));border:1px solid rgba(125,211,252,.5);border-radius:6px"></div>
         <div style="position:absolute;inset:auto 12% 76% 12%;height:6%;background:rgba(148,163,184,.5);border-radius:3px"></div>
-        <div class="pin" style="top:16%;left:20%">#1 ETTV 51.8 → ≤45</div>
+        <div class="pin" style="top:16%;left:20%">#1 ETTV 51.8 → ≤50</div>
         <div class="pin" style="top:38%;right:14%">#2 SHGC 0.55 → ≤0.35</div>
         <div class="pin" style="bottom:20%;left:16%">#3 EUI 195.9 → ≤160</div>
         <div style="position:absolute;bottom:6%;left:5%;color:#7d8fb3;font-size:.8rem">1,085 elements · glazing, walls, roof, floors — the systems the verifier checks</div>
@@ -849,12 +852,12 @@ details.inputs{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6r
   <section class="blk" id="try">
     <div class="eyebrow">Try the check yourself</div>
     <h2>A fix isn't a fix until the numbers say so.</h2>
-    <p>Northbank's envelope fails ETTV (51.8 against a limit of 45). Drag the glazing's solar heat gain down and watch
+    <p>Northbank's envelope fails ETTV (51.8 against a limit of 50). Drag the glazing's solar heat gain down and watch
     the check — a simplified version of the same arithmetic the verifier runs on every proposed fix.</p>
     <div class="trybox">
       <label style="color:#c9d6ee;font-size:.9rem">Glazing SHGC: <b id="shgcVal">0.55</b> (as modelled)</label>
       <input type="range" id="shgc" min="0.20" max="0.60" step="0.01" value="0.55" oninput="tryCheck()">
-      <p style="margin:.6rem 0">ETTV estimate: <b id="ettvVal" style="color:#fff">51.8</b> W/m² · limit 45 ·
+      <p style="margin:.6rem 0">ETTV estimate: <b id="ettvVal" style="color:#fff">51.8</b> W/m² · limit 50 ·
       <span class="verdict no" id="tryVerdict">NOT VERIFIED</span></p>
       <button class="chipbtn" onclick="showForgeFix()">Show GreenForge's fix</button>
       <span class="small" style="color:#7d8fb3">Low-e glazing (SHGC 0.28) + shading fins + WWR 0.60 — verified as a bundle in the demo.</span>
@@ -1101,7 +1104,7 @@ function loopTab(i){document.querySelectorAll('[data-loop]').forEach(b=>b.classL
 loopTab(0);
 function tryCheck(){const shgc=parseFloat($('shgc').value);$('shgcVal').textContent=shgc.toFixed(2);
   const ettv=Math.round(51.8*(0.35+0.65*(shgc/0.55))*10)/10;$('ettvVal').textContent=ettv;
-  const ok=ettv<=45;const v=$('tryVerdict');v.className='verdict '+(ok?'ok':'no');v.textContent=ok?'VERIFIED ✓':'NOT VERIFIED';}
+  const ok=ettv<=50;const v=$('tryVerdict');v.className='verdict '+(ok?'ok':'no');v.textContent=ok?'VERIFIED ✓':'NOT VERIFIED';}
 function showForgeFix(){$('shgc').value=0.28;tryCheck();}
 
 /* ---------- enter / loading ---------- */
@@ -1258,7 +1261,7 @@ function compareMode(m){if(m==='before'){gfCueSafe({mode:'overview'});if(window.
   else gfCueSafe({mode:'apply'});}
 function setSpeed(s){S.speed=s;document.querySelectorAll('.spd').forEach(b=>b.classList.toggle('on',+b.dataset.s===s));}
 function replayLast(){if(S.run)replay(S.run);}
-function updateKept(){$('keptCount').textContent=S.kept.size+' kept fixes';
+function updateKept(){$('keptCount').textContent=S.kept.size+' kept fixes';const sf=$('stepsFoot');if(sf&&sf.textContent.includes('steps ·')){const base=sf.textContent.split(' · ')[0]+' steps · run finished.';sf.textContent=base+' '+S.kept.size+' fix(es) kept so far.';}
   if(S.run)$('menuSession').textContent='Session: '+S.run.compliance_before.pass+'/'+S.run.compliance_before.total+' rules passing · '+S.kept.size+' kept fixes';}
 function renderReport(){
   if(!S.run)return;const run=S.run;
