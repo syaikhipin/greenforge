@@ -275,3 +275,34 @@ if the viewer ever stays dark, reload in a fresh tab.
 - Upstream geometry loop adapted from ORCA (MIT,
   IssueLab-Limited/ORCA-hackathon-2026); GreenForge is the green-code
   verified-fix extension.
+
+
+## 10. Addendum — 25 Nov 2026, late evening: Demo 2 + the 3D root cause
+
+**Demo 2 added (commit 200a7d8, deployed and verified live):** following
+ORCA's two-demo shape, GreenForge now ships a second demo — **Northbank
+Building Services (MEP)**, the services model of the same building
+(`green/samples/Northbank-MEP.ifc`, served at `/demo2.ifc`). Its profile
+inverts Demo 1's story: the envelope passes, the services fail. Verified
+live run (Green Mark): findings 4 pass / 4 fail (HVAC COP, HVAC kW/RT,
+renewables, lighting LPD), bundle takes it to **8/8, EUI 178.2 → 113.6**,
+5 verified fixes, payback 4.7 yr, 12 steps. The landing demo section is
+now "Two demos, four codes" with two cards; the workspace Menu switches
+demos in place.
+
+**The 3D-not-loading defect — root cause proven, and it was not the
+site.** After the self-hosting change the viewer still failed in the
+user's Chrome; instrumenting the viewer (commit 90f11f1) made it report
+its own error verbatim: **"Error creating WebGL context."** The user's
+Chrome GPU process had died during the evening (it rendered fine at
+21:11–21:16, then never again); every later failure — CDN theory, cache
+theory, tab theory — was that one dead process. The site renders
+correctly in a clean browser, and the analysis loop runs even in the
+affected Chrome. The remedy is a full browser quit (Cmd+Q) and restart
+on the user's side; the viewer now names this failure itself instead of
+spinning silently. Two real bugs were found and fixed along the way:
+the missing `web-ifc-mt.worker.js` (7b7c1b2) and the unguarded renderer
+creation (90f11f1). README note: per the user's clarification, README.md
+is ORCA's original with GreenForge as an additional module (banner);
+GREENFORGE.md carries the module documentation — this supersedes the
+README description in §9.
