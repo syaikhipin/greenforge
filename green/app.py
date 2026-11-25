@@ -1281,7 +1281,8 @@ async function loadDemoModel(){
   try{
     const resp=await fetch('/demo.ifc');if(!resp.ok)throw new Error('HTTP '+resp.status);
     const buf=await resp.arrayBuffer();
-    if(typeof loadIfcBuffer!=='function')throw new Error('3D module still loading — wait a few seconds and retry');
+    for(let i=0;i<40&&typeof loadIfcBuffer!=='function';i++){st.textContent='Waiting for the 3D module (three.js + web-ifc from CDN)…';await sleep(500);}
+    if(typeof loadIfcBuffer!=='function')throw new Error('3D module did not arrive — check the connection and reload the page');
     await loadIfcBuffer(buf,'Northbank-Architecture.ifc');
   }catch(e){st.textContent='Demo IFC failed to load: '+e.message;}
 }
